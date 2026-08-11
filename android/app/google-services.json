@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040128842751",
+    "project_id": "labkesda-deliserdang-470dc",
+    "storage_bucket": "labkesda-deliserdang-470dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040128842751:android:765009231cf034545125ca",
+        "android_client_info": {
+          "package_name": "com.example.labkesda_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDz9p-lrvTFCQaTLcBuSJWmL_n2i4mdnzw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

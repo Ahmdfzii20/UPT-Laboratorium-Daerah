@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return request.auth != null && getUserData().role == 'admin';
+    }
+
+    function isPuskesmasOwner(puskesmasId) {
+      return request.auth != null
+        && getUserData().role == 'puskesmas'
+        && getUserData().puskesmasId == puskesmasId;
+    }
+
+    function deadlineSettings() {
+      return get(/databases/$(database)/documents/settings/deadline).data;
+    }
+
+    // Batas revisi: request.time harus masih sebelum disubmitPada + batasRevisiHari
+    function masihBisaDirevisi(laporan) {
+      return laporan.disubmitPada == null
+        || request.time < laporan.disubmitPada
+             + duration.value(deadlineSettings().batasRevisiHari, 'd');
+    }
+
+    // Field identitas (puskesmasId, tahun, bulan) immutable bagi petugas (§8)
+    function fieldIdentitasTidakBerubah() {
+      return request.resource.data.puskesmasId == resource.data.puskesmasId
+        && request.resource.data.tahun == resource.data.tahun
+        && request.resource.data.bulan == resource.data.bulan;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /puskesmas/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /examTypes/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /laporan/{laporanId} {
+      allow read: if isAdmin() || isPuskesmasOwner(resource.data.puskesmasId);
+      allow create: if isPuskesmasOwner(request.resource.data.puskesmasId);
+      allow update: if isAdmin()
+        || (isPuskesmasOwner(resource.data.puskesmasId)
+            && masihBisaDirevisi(resource.data)
+            && fieldIdentitasTidakBerubah());
+      allow delete: if isAdmin();
+
+      match /histori/{historiId} {
+        allow read: if isAdmin()
+          || isPuskesmasOwner(get(/databases/$(database)/documents/laporan/$(laporanId)).data.puskesmasId);
+        allow create: if isAdmin()
+          || isPuskesmasOwner(get(/databases/$(database)/documents/laporan/$(laporanId)).data.puskesmasId);
+        allow update, delete: if false; // audit trail immutable
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "laporan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "puskesmasId", "order": "ASCENDING" },
+        { "fieldPath": "tahun", "order": "DESCENDING" },
+        { "fieldPath": "bulan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "laporan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tahun", "order": "ASCENDING" },
+        { "fieldPath": "tahun", "order": "DESCENDING" },
+        { "fieldPath": "bulan", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
