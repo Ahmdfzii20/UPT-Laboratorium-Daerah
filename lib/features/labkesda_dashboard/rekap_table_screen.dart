@@ -25,6 +25,13 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
   int _tahun = DateTime.now().year;
   int? _bulan = DateTime.now().month; // null = seluruh tahun
   bool _exporting = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,51 +71,62 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                DropdownButton<int?>(
-                  value: _bulan,
-                  items: [
-                    const DropdownMenuItem<int?>(
-                      value: null,
-                      child: Text('Seluruh tahun'),
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              DropdownButton<int?>(
+                value: _bulan,
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Seluruh tahun'),
+                  ),
+                  for (var m = 1; m <= 12; m++)
+                    DropdownMenuItem<int?>(
+                      value: m,
+                      child: Text(AppConstants.namaBulan[m - 1]),
                     ),
-                    for (var m = 1; m <= 12; m++)
-                      DropdownMenuItem<int?>(
-                        value: m,
-                        child: Text(AppConstants.namaBulan[m - 1]),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _bulan = v),
-                ),
-                DropdownButton<int>(
-                  value: _tahun,
-                  items: [
-                    for (final y in [DateTime.now().year, DateTime.now().year - 1])
-                      DropdownMenuItem(value: y, child: Text('$y')),
-                  ],
-                  onChanged: (v) => setState(() => _tahun = v ?? _tahun),
-                ),
-                Text(
-                  '${sortedPuskesmas.length} puskesmas • ${sortedExamTypes.length} jenis',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
+                ],
+                onChanged: (v) => setState(() => _bulan = v),
+              ),
+              DropdownButton<int>(
+                value: _tahun,
+                items: [
+                  for (var y = DateTime.now().year; y >= 2025; y--)
+                    DropdownMenuItem(value: y, child: Text('$y')),
+                ],
+                onChanged: (v) => setState(() => _tahun = v ?? _tahun),
+              ),
+              Text(
+                '${sortedPuskesmas.length} puskesmas • ${sortedExamTypes.length} jenis',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
+        ),
           Expanded(
             child: (sortedPuskesmas.isEmpty || sortedExamTypes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: _RekapTabel(
-                      puskesmas: sortedPuskesmas,
-                      examTypes: sortedExamTypes,
-                      laporan: filteredLaporan,
-                    ),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Scrollbar(
+                        controller: _scrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: _RekapTabel(
+                            puskesmas: sortedPuskesmas,
+                            examTypes: sortedExamTypes,
+                            laporan: filteredLaporan,
+                            availableHeight: constraints.maxHeight,
+                          ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],
@@ -158,11 +176,13 @@ class _RekapTabel extends StatelessWidget {
     required this.puskesmas,
     required this.examTypes,
     required this.laporan,
+    required this.availableHeight,
   });
 
   final List<PuskesmasModel> puskesmas;
   final List<ExamTypeModel> examTypes;
   final List<LaporanModel> laporan;
+  final double availableHeight;
 
   double _totalFor(String puskesmasId, String examTypeId) {
     num total = 0;
@@ -176,71 +196,108 @@ class _RekapTabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalWidth = 200.0 + examTypes.length * 90.0;
 
-    return SizedBox(
-      width: totalWidth,
-      child: DataTable(
-        headingRowHeight: 64,
-        dataRowMinHeight: 36,
-        dataRowMaxHeight: 40,
-        columnSpacing: 4,
-        columns: [
-          const DataColumn(label: SizedBox(width: 60, child: Text('NO'))),
-          const DataColumn(label: SizedBox(width: 130, child: Text('PUSKESMAS / UPT'))),
+    Widget buildCell(Widget child, double width, {bool isHeader = false}) {
+      return Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        alignment: isHeader ? Alignment.bottomLeft : Alignment.centerLeft,
+        child: child,
+      );
+    }
+
+    // Header Row
+    final headerRow = Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.black12, width: 2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          buildCell(const Text('NO', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)), 60, isHeader: true),
+          buildCell(const Text('PUSKESMAS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)), 130, isHeader: true),
           for (final e in examTypes)
-            DataColumn(
-              label: SizedBox(
-                width: 90,
-                child: Text(
-                  e.nama,
-                  style: const TextStyle(fontSize: 9),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
+            buildCell(
+              Text(
+                e.nama,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 9),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
+              90,
+              isHeader: true,
             ),
         ],
-        rows: [
-          for (var i = 0; i < puskesmas.length; i++)
-            DataRow(
-              cells: [
-                DataCell(Text('${i + 1}')),
-                DataCell(Text(puskesmas[i].nama,
-                    style: const TextStyle(fontSize: 11))),
-                for (final e in examTypes)
-                  DataCell(
-                    Center(
-                      child: Text(
-                        formatAngka(_totalFor(puskesmas[i].id, e.id)),
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
+      ),
+    );
+
+    // Footer Row (Jumlah)
+    final footerRow = Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF0F4F8), // Subtle highlight for footer
+        border: Border(top: BorderSide(color: Colors.black12, width: 2)),
+      ),
+      child: Row(
+        children: [
+          buildCell(const SizedBox(), 60),
+          buildCell(const Text('JUMLAH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)), 130),
+          for (final e in examTypes)
+            buildCell(
+              Center(
+                child: Text(
+                  formatAngka(
+                    puskesmas.fold<num>(0, (sum, p) => sum + _totalFor(p.id, e.id)),
                   ),
-              ],
-            ),
-          DataRow(
-            cells: [
-              const DataCell(Text('')),
-              const DataCell(
-                Text('JUMLAH',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-              ),
-              for (final e in examTypes)
-                DataCell(
-                  Center(
-                    child: Text(
-                      formatAngka(
-                        puskesmas.fold<num>(
-                          0,
-                          (sum, p) => sum + _totalFor(p.id, e.id),
-                        ),
-                      ),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 11),
-                    ),
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                 ),
-            ],
+              ),
+              90,
+            ),
+        ],
+      ),
+    );
+
+    const headerHeight = 64.0;
+    const footerHeight = 40.0;
+    final bodyHeight = (availableHeight - headerHeight - footerHeight).clamp(80.0, double.infinity);
+
+    return SizedBox(
+      width: totalWidth,
+      child: Column(
+        children: [
+          headerRow,
+          SizedBox(
+            height: bodyHeight,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Column(
+                children: [
+                  for (var i = 0; i < puskesmas.length; i++)
+                    Container(
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: Colors.black12)),
+                      ),
+                      child: Row(
+                        children: [
+                          buildCell(Text('${i + 1}', style: const TextStyle(fontSize: 11)), 60),
+                          buildCell(Text(puskesmas[i].nama, style: const TextStyle(fontSize: 11)), 130),
+                          for (final e in examTypes)
+                            buildCell(
+                              Center(
+                                child: Text(
+                                  formatAngka(_totalFor(puskesmas[i].id, e.id)),
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              90,
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
+          footerRow,
         ],
       ),
     );

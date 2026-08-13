@@ -111,7 +111,7 @@ class ExcelExportService {
     // --- Baris header ---
     final headerRow = <CellValue?>[
       TextCellValue('NO'),
-      TextCellValue('PUSKESMAS / UPT'),
+      TextCellValue('PUSKESMAS'),
     ];
     for (final e in examTypes) {
       headerRow.add(TextCellValue(e.nama));

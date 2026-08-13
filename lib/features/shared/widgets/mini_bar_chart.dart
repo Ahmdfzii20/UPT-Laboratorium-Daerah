@@ -67,7 +67,7 @@ class MiniBarChart extends StatelessWidget {
                         ),
                         child: FractionallySizedBox(
                           heightFactor: maxValue == 0
-                              ? 0
+                              ? 0.0
                               : (points[i].value / maxValue).clamp(0.0, 1.0),
                           child: Container(
                             decoration: BoxDecoration(
