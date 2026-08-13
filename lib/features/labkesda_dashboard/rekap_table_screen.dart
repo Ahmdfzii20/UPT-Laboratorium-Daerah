@@ -12,6 +12,7 @@ import '../../../models/laporan_model.dart';
 import '../../../models/puskesmas_model.dart';
 import '../../../providers/laporan_providers.dart';
 import '../../../providers/master_data_providers.dart';
+import '../../../dummy_data.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class RekapTableScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,7 @@ class RekapTableScreen extends ConsumerStatefulWidget {
 
 class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
   int _tahun = DateTime.now().year;
-  int? _bulan = DateTime.now().month; // null = seluruh tahun
+  String _periode = 'all'; // 'all', 's1', 's2', 'm1'..'m12'
   bool _exporting = false;
   final ScrollController _scrollController = ScrollController();
 
@@ -46,7 +47,12 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
 
     final filteredLaporan = laporan.where((l) {
       if (l.status == LaporanStatus.draft) return false;
-      if (_bulan != null && l.bulan != _bulan) return false;
+      if (_periode == 's1' && l.bulan > 6) return false;
+      if (_periode == 's2' && l.bulan <= 6) return false;
+      if (_periode.startsWith('m')) {
+        final targetBulan = int.tryParse(_periode.substring(1));
+        if (targetBulan != null && l.bulan != targetBulan) return false;
+      }
       return true;
     }).toList();
 
@@ -76,20 +82,28 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
             spacing: 12,
             runSpacing: 8,
             children: [
-              DropdownButton<int?>(
-                value: _bulan,
+              DropdownButton<String>(
+                value: _periode,
                 items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
+                  const DropdownMenuItem(
+                    value: 'all',
                     child: Text('Seluruh tahun'),
                   ),
+                  const DropdownMenuItem(
+                    value: 's1',
+                    child: Text('Semester I (Jan - Jun)'),
+                  ),
+                  const DropdownMenuItem(
+                    value: 's2',
+                    child: Text('Semester II (Jul - Des)'),
+                  ),
                   for (var m = 1; m <= 12; m++)
-                    DropdownMenuItem<int?>(
-                      value: m,
+                    DropdownMenuItem(
+                      value: 'm$m',
                       child: Text(AppConstants.namaBulan[m - 1]),
                     ),
                 ],
-                onChanged: (v) => setState(() => _bulan = v),
+                onChanged: (v) => setState(() => _periode = v ?? 'all'),
               ),
               DropdownButton<int>(
                 value: _tahun,
@@ -146,6 +160,7 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
         puskesmas: puskesmas,
         examTypes: examTypes,
         semuaLaporan: laporan,
+        periode: _periode,
       );
 
       if (bytes == null) {

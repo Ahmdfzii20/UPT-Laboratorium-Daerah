@@ -43,32 +43,24 @@ void main() {
     );
   }
 
-  testWidgets('drawer mobile: buka drawer & sheet profil tanpa assertion',
+  testWidgets('mobile: menampilkan bottom nav dan profil sheet',
       (tester) async {
-    tester.view.physicalSize = const Size(800, 600);
+    tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationRail), findsNothing);
-
-    await tester.tap(find.byType(DrawerButton));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Monitoring'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.text('AL'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(FilledButton, 'Keluar'), findsWidgets);
-
-    await tester.tapAt(const Offset(400, 80));
-    await tester.pumpAndSettle();
+    expect(find.text('Keluar Akun'), findsOneWidget);
   });
 
-  testWidgets('rail desktop: klik profil membuka menu Keluar', (tester) async {
+  testWidgets('desktop: menampilkan navigation rail dan profil sheet', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -81,6 +73,6 @@ void main() {
     await tester.tap(find.text('AL'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Keluar'), findsOneWidget);
+    expect(find.text('Keluar Akun'), findsOneWidget);
   });
 }
