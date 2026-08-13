@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/utils/status_utils.dart';
 import '../../../models/deadline_model.dart';
 import '../../../models/laporan_model.dart';
@@ -11,13 +11,19 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/laporan_providers.dart';
 import '../../../providers/master_data_providers.dart';
 import '../../../providers/settings_provider.dart';
-import '../shared/widgets/dashboard_cards.dart';
 import '../shared/widgets/dashboard_shell.dart';
 import '../shared/widgets/laporan_status_badge.dart';
-import 'form_laporan_screen.dart';
 
 class PuskesmasDashboardScreen extends ConsumerWidget {
   const PuskesmasDashboardScreen({super.key});
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,302 +44,417 @@ class PuskesmasDashboardScreen extends ConsumerWidget {
     final laporanBulanIni = semuaLaporan
         .where((l) => l.tahun == now.year && l.bulan == now.month)
         .firstOrNull;
-    final periode = laporanBulanIni?.labelBulanTahun ??
+    final periodeBulanIni = laporanBulanIni?.labelBulanTahun ??
         '${AppConstants.namaBulan[now.month - 1]} ${now.year}';
 
-    final terkirim = semuaLaporan
-        .where((l) => statusTampilan(
-              laporan: l,
-              batasInputHari: deadline.batasInputHari,
-              batasRevisiHari: deadline.batasRevisiHari,
-            ) ==
-            'Terkirim')
-        .length;
-    final perluAksi = semuaLaporan.length - terkirim;
+    // Calculate progress percentage of filled parameters for current month
+    final filledCount = laporanBulanIni?.hasil.values
+            .where((val) => val > 0)
+            .length ??
+        0;
+    final totalParams = laporanBulanIni?.hasil.length ?? 10;
+    final progressPct = totalParams > 0
+        ? ((filledCount / totalParams) * 100).clamp(0, 100).round()
+        : 45; // Default demo progress from Stitch mock if empty
 
     return DashboardShell(
       title: 'Dashboard Puskesmas',
+      sectionName: 'Beranda',
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-          GradientHeader(
-            judul: 'Dashboard Puskesmas',
-            subjudul: 'Kab. Deli Serdang',
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.local_hospital_outlined,
-                      color: Theme.of(context).colorScheme.primary, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selamat datang,',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 13),
-                      ),
-                      Text(
-                        namaPuskesmas,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      Text(
-                        'Periode berjalan: $periode',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12),
-                      ),
-                    ],
+          // Greeting Section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_getGreeting()}, Petugas Lab',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: AppTheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 18,
+                    color: AppTheme.onSurfaceVariant,
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      namaPuskesmas,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          _KartuBulanIni(
+          const SizedBox(height: 20),
+
+          // Main Card: Current Month Report (Stitch Design)
+          _MainCardBulanIni(
             laporan: laporanBulanIni,
+            periodeLabel: periodeBulanIni,
+            progressPct: progressPct,
             deadline: deadline,
             tahun: now.year,
             bulan: now.month,
           ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth > 700 ? 3 : 3;
-              return GridView.count(
-                crossAxisCount: columns,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: constraints.maxWidth > 700 ? 2.4 : 1.15,
-                children: [
-                  StatCard(
-                    label: 'Total Laporan',
-                    value: '${semuaLaporan.length}',
-                    icon: Icons.inbox_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  StatCard(
-                    label: 'Terkirim',
-                    value: '$terkirim',
-                    icon: Icons.task_alt,
-                    color: Colors.green.shade700,
-                  ),
-                  StatCard(
-                    label: 'Perlu Aksi',
-                    value: '$perluAksi',
-                    icon: Icons.pending_actions,
-                    color: Colors.orange.shade800,
-                  ),
-                ],
-              );
-            },
-          ),
           const SizedBox(height: 24),
-          SectionTitle(
-            title: 'Aksi Cepat',
-            trailing: Text(
-              'Deadline input ${deadline.batasInputHari} hari',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          const SizedBox(height: 8),
+
+          // Recent Reports Header
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () =>
-                      FormLaporanScreen.push(context, now.year, now.month),
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Isi / Ubah Laporan'),
-                ),
+              Text(
+                'Laporan Terakhir',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.go('/puskesmas/histori'),
-                  icon: const Icon(Icons.history),
-                  label: const Text('Histori'),
+              GestureDetector(
+                onTap: () => context.go('/puskesmas/histori'),
+                child: Text(
+                  'Lihat Semua',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // List of Recent Reports
+          if (laporan.isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (semuaLaporan.isEmpty)
+            _EmptyStateRecent(periode: periodeBulanIni)
+          else
+            ...semuaLaporan.take(3).map((l) {
+              return _RecentReportCard(laporan: l, deadline: deadline);
+            }),
+
           const SizedBox(height: 24),
-          SectionTitle(
-            title: 'Laporan Tahun ${now.year}',
-            trailing: Text(
-              '${semuaLaporan.length} laporan',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          const SizedBox(height: 8),
+
+          // Annual 12-Month Map Grid
           _PetaBulanTahun(
             laporan: semuaLaporan,
             deadline: deadline,
             tahun: now.year,
           ),
-          const SizedBox(height: 24),
-          SectionTitle(title: 'Laporan Terbaru'),
-          const SizedBox(height: 8),
-          if (laporan.isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (semuaLaporan.isEmpty)
-            EmptyState(
-              icon: Icons.inbox_outlined,
-              teks:
-                  'Belum ada laporan. Tekan "Isi / Ubah Laporan" untuk periode $periode.',
-            )
-          else
-            ..._buildKartuLaporan(context, ref, semuaLaporan, deadline),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
-
-  List<Widget> _buildKartuLaporan(
-    BuildContext context,
-    WidgetRef ref,
-    List<LaporanModel> list,
-    DeadlineModel deadline,
-  ) {
-    return list.take(3).map((l) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context)
-                .colorScheme
-                .primary
-                .withValues(alpha: 0.12),
-            child: Icon(
-              Icons.calendar_month,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          title: Text(l.labelBulanTahun),
-          subtitle: Text(
-            'Total ${l.total} pemeriksaan • Diubah ${formatTanggal(l.diubahPada)}',
-          ),
-          trailing: LaporanStatusBadge(laporan: l, deadline: deadline),
-          onTap: () => FormLaporanScreen.push(context, l.tahun, l.bulan),
-        ),
-      );
-    }).toList();
-  }
 }
 
-/// Kartu status + sisa waktu deadline untuk bulan berjalan.
-class _KartuBulanIni extends StatelessWidget {
-  const _KartuBulanIni({
+class _MainCardBulanIni extends StatelessWidget {
+  const _MainCardBulanIni({
     required this.laporan,
+    required this.periodeLabel,
+    required this.progressPct,
     required this.deadline,
     required this.tahun,
     required this.bulan,
   });
 
   final LaporanModel? laporan;
+  final String periodeLabel;
+  final int progressPct;
   final DeadlineModel deadline;
   final int tahun;
   final int bulan;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final belumAda = laporan == null;
-    final status = statusTampilan(
-      laporan: laporan ?? LaporanModel(
-        id: '',
-        puskesmasId: '',
-        tahun: tahun,
-        bulan: bulan,
-        status: LaporanStatus.draft,
-        hasil: const {},
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
-      batasInputHari: deadline.batasInputHari,
-      batasRevisiHari: deadline.batasRevisiHari,
-    );
-
-    final (warna, ikon) = switch (status) {
-      'Terkirim' => (Colors.green, Icons.assignment_turned_in_outlined),
-      'Revisi Diminta' => (Colors.orange, Icons.refresh),
-      'Terlambat' => (Colors.red, Icons.error_outline),
-      _ => (Colors.blueGrey, Icons.assignment_late_outlined),
-    };
-
-    final sisaHari = _sisaHariDeadline();
-    final deadlineInfo = belumAda || status == 'Terlambat'
-        ? (sisaHari < 0
-            ? 'Deadline sudah terlewati'
-            : 'Sisa $sisaHari hari untuk submit')
-        : null;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: warna.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(ikon, size: 32, color: warna),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Status laporan periode berjalan:',
-                      style: Theme.of(context).textTheme.bodySmall),
-                  Text(status,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: warna,
-                            fontWeight: FontWeight.bold,
-                          )),
-                  if (deadlineInfo != null) ...[
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: Label + Status Chip
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LAPORAN BULAN BERJALAN',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: AppTheme.onSurfaceVariant,
+                            letterSpacing: 0.8,
+                            fontSize: 11,
+                          ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      deadlineInfo,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: status == 'Terlambat' ? warna : scheme.onSurfaceVariant,
-                        fontWeight: status == 'Terlambat'
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
+                      periodeLabel,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurface,
+                          ),
                     ),
                   ],
-                ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              LaporanStatusBadge(
+                laporan: laporan ??
+                    LaporanModel(
+                      id: '',
+                      puskesmasId: '',
+                      tahun: tahun,
+                      bulan: bulan,
+                      status: LaporanStatus.draft,
+                      hasil: const {},
+                    ),
+                deadline: deadline,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Progress section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progress Pengisian',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+              ),
+              Text(
+                '$progressPct%',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progressPct / 100.0,
+              minHeight: 8,
+              backgroundColor: AppTheme.surfaceContainerHigh,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // CTA Button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: () => context.push('/puskesmas/form?tahun=$tahun&bulan=$bulan'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.edit_document, size: 20),
+              label: Text(
+                laporan == null || laporan!.status == LaporanStatus.draft
+                    ? 'Lanjutkan Laporan'
+                    : 'Lihat / Edit Laporan',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentReportCard extends StatelessWidget {
+  const _RecentReportCard({
+    required this.laporan,
+    required this.deadline,
+  });
+
+  final LaporanModel laporan;
+  final DeadlineModel deadline;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRevisi = laporan.status == LaporanStatus.revisionRequested;
+    final isLocked = laporan.status == LaporanStatus.submitted &&
+        !masihBisaDirevisi(
+          disubmitPada: laporan.disubmitPada,
+          batasRevisiHari: deadline.batasRevisiHari,
+        );
+
+    final iconData = isLocked
+        ? Icons.lock
+        : (isRevisi ? Icons.warning_amber_rounded : Icons.calendar_month);
+
+    final iconBgColor = isLocked
+        ? AppTheme.surfaceContainerHigh
+        : (isRevisi
+            ? AppTheme.tertiaryContainer.withValues(alpha: 0.15)
+            : AppTheme.surfaceContainer);
+
+    final iconColor = isLocked
+        ? AppTheme.onSurfaceVariant
+        : (isRevisi ? AppTheme.tertiaryContainer : AppTheme.onSurfaceVariant);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isLocked
+            ? AppTheme.surfaceContainerLow
+            : AppTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x0F000000)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => context.push(
+              '/puskesmas/form?tahun=${laporan.tahun}&bulan=${laporan.bulan}'),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(iconData, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        laporan.labelBulanTahun,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        laporan.catatanRevisi != null && isRevisi
+                            ? 'Catatan: ${laporan.catatanRevisi}'
+                            : (isLocked
+                                ? 'Siklus ditutup'
+                                : '${laporan.total} Data Pemeriksaan'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isRevisi
+                                  ? AppTheme.tertiaryContainer
+                                  : AppTheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                LaporanStatusBadge(
+                  laporan: laporan,
+                  deadline: deadline,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
 
-  int _sisaHariDeadline() {
-    final batas = DateTime(tahun, bulan + 1, 1)
-        .add(Duration(days: deadline.batasInputHari));
-    return batas.difference(DateTime.now()).inDays;
+class _EmptyStateRecent extends StatelessWidget {
+  const _EmptyStateRecent({required this.periode});
+
+  final String periode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.inbox_outlined, size: 40, color: AppTheme.outline),
+          const SizedBox(height: 8),
+          Text(
+            'Belum ada laporan.',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tekan "Lanjutkan Laporan" untuk mengisi periode $periode.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
   }
 }
 
-/// Peta 12 bulan: warna menandakan status pelaporan tiap bulan, dapat diketuk
-/// untuk membuka form bulan tersebut.
 class _PetaBulanTahun extends StatelessWidget {
   const _PetaBulanTahun({
     required this.laporan,
@@ -347,55 +468,63 @@ class _PetaBulanTahun extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final skema = _WarnaBulan();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Periode pelaporan',
-                    style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
-                Text('$tahun', style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-            const SizedBox(height: 10),
-            GridView.count(
-              crossAxisCount: 6,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 1.1,
-              children: [
-                for (var m = 1; m <= 12; m++)
-                  _SelBulan(
-                    bulan: m,
-                    tahun: tahun,
-                    laporan: laporan
-                        .where((l) => l.bulan == m && l.tahun == tahun)
-                        .firstOrNull,
-                    deadline: deadline,
-                    warna: skema,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: const [
-                _LegendaMini(warna: Colors.blueGrey, label: 'Draft'),
-                _LegendaMini(warna: Colors.green, label: 'Terkirim'),
-                _LegendaMini(warna: Colors.orange, label: 'Revisi'),
-                _LegendaMini(warna: Colors.red, label: 'Terlambat'),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x0F000000)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Periode Pelaporan $tahun',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              Text(
+                '12 Bulan',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 6,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1.1,
+            children: [
+              for (var m = 1; m <= 12; m++)
+                _SelBulan(
+                  bulan: m,
+                  tahun: tahun,
+                  laporan: laporan
+                      .where((l) => l.bulan == m && l.tahun == tahun)
+                      .firstOrNull,
+                  deadline: deadline,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            children: const [
+              _LegendaMini(warna: AppTheme.secondary, label: 'Draft'),
+              _LegendaMini(warna: AppTheme.primaryContainer, label: 'Terkirim'),
+              _LegendaMini(warna: AppTheme.tertiaryContainer, label: 'Revisi'),
+              _LegendaMini(warna: AppTheme.error, label: 'Terlambat'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -407,14 +536,12 @@ class _SelBulan extends StatelessWidget {
     required this.tahun,
     required this.laporan,
     required this.deadline,
-    required this.warna,
   });
 
   final int bulan;
   final int tahun;
   final LaporanModel? laporan;
   final DeadlineModel deadline;
-  final _WarnaBulan warna;
 
   @override
   Widget build(BuildContext context) {
@@ -431,21 +558,27 @@ class _SelBulan extends StatelessWidget {
       batasInputHari: deadline.batasInputHari,
       batasRevisiHari: deadline.batasRevisiHari,
     );
+
     final isi = laporan != null;
-    final color = warna.warna(status, isi);
+    final color = switch (status) {
+      'Terkirim' => AppTheme.primaryContainer,
+      'Revisi Diminta' || 'Revisi' => AppTheme.tertiaryContainer,
+      'Terlambat' => AppTheme.error,
+      _ => AppTheme.secondary,
+    };
 
     return Tooltip(
       message: isi
           ? '${AppConstants.namaBulan[bulan - 1]} • $status'
           : '${AppConstants.namaBulan[bulan - 1]} • Belum diisi',
       child: InkWell(
-        onTap: () => FormLaporanScreen.push(context, tahun, bulan),
+        onTap: () => context.push('/puskesmas/form?tahun=$tahun&bulan=$bulan'),
         borderRadius: BorderRadius.circular(8),
         child: Container(
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isi ? 0.55 : 0.25),
+            color: color.withValues(alpha: isi ? 0.15 : 0.08),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.5)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Center(
             child: Text(
@@ -453,25 +586,13 @@ class _SelBulan extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isi ? color : color.withValues(alpha: 0.7),
+                color: color,
               ),
             ),
           ),
         ),
       ),
     );
-  }
-}
-
-class _WarnaBulan {
-  Color warna(String status, bool isi) {
-    if (!isi) return Colors.grey;
-    return switch (status) {
-      'Terkirim' => Colors.green,
-      'Revisi Diminta' => Colors.orange,
-      'Terlambat' => Colors.red,
-      _ => Colors.blueGrey,
-    };
   }
 }
 
@@ -487,15 +608,18 @@ class _LegendaMini extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(
-            color: warna.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(3),
+            color: warna,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppTheme.onSurfaceVariant),
+        ),
       ],
     );
   }

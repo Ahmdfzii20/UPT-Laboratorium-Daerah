@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
 import '../../../core/services/firestore_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/status_utils.dart';
@@ -11,6 +12,7 @@ import '../../../models/laporan_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/master_data_providers.dart';
 import '../../../providers/settings_provider.dart';
+import '../shared/widgets/app_logo.dart';
 
 class FormLaporanScreen extends ConsumerStatefulWidget {
   const FormLaporanScreen({super.key});
@@ -136,13 +138,12 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
         final laporan = existing.copyWith(
           hasil: hasil,
           diubahPada: now,
-          status: submit
-              ? LaporanStatus.submitted
-              : existing.status,
+          status: submit ? LaporanStatus.submitted : existing.status,
           disubmitPada: (submit && existing.disubmitPada == null)
               ? now
               : existing.disubmitPada,
-          clearCatatanRevisi: submit && existing.status == LaporanStatus.revisionRequested,
+          clearCatatanRevisi:
+              submit && existing.status == LaporanStatus.revisionRequested,
         );
         await FirestoreService.instance.updateLaporan(
           laporan,
@@ -168,9 +169,6 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Kembali aman: jika layar dibuka lewat `push` cukup pop, tapi jika dibuka
-  /// lewat menu navigasi (`context.go`) dan tidak ada tumpukan, kembali ke
-  /// dashboard.
   void _kembali() {
     if (context.canPop()) {
       context.pop();
@@ -190,90 +188,244 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     final filtered = examTypes
         .where((e) =>
             e.aktif &&
-            (_search.isEmpty || e.nama.toLowerCase().contains(_search.toLowerCase())))
+            (_search.isEmpty ||
+                e.nama.toLowerCase().contains(_search.toLowerCase()) ||
+                e.kategori.toLowerCase().contains(_search.toLowerCase())))
         .toList();
 
-    final appBar = AppBar(
-      title: Text(
-        'Laporan ${AppConstantsBulan.nama(_bulan)} $_tahun',
-        style: const TextStyle(fontSize: 18),
-      ),
-      leading: BackButton(onPressed: _kembali),
-    );
+    // Group filtered items by category
+    final grouped = <String, List<ExamTypeModel>>{};
+    for (final e in filtered) {
+      final cat = e.kategori.isNotEmpty ? e.kategori : 'Pemeriksaan Lainnya';
+      grouped.putIfAbsent(cat, () => []).add(e);
+    }
+
+    final namaBulan = AppConstantsBulan.nama(_bulan);
 
     return Scaffold(
-      appBar: appBar,
-      body: Column(
-        children: [
-          if (_laporan != null)
-            _PanelStatusLaporan(
-              laporan: _laporan!,
-              deadline: deadline,
-              editable: editable,
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Cari jenis pemeriksaan…',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+      backgroundColor: AppTheme.surfaceContainerLow,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.primary),
+          onPressed: _kembali,
+        ),
+        title: Text(
+          'Form Input',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              onChanged: (v) => setState(() => _search = v.trim()),
-            ),
+        ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: AppLogo(size: 28),
           ),
-          Expanded(
-            child: _loadingData
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: filtered.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            '${filtered.length} jenis pemeriksaan ditemukan',
-                            style: Theme.of(context).textTheme.bodySmall,
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              // Locked / Status Bar Banner
+              if (_laporan != null)
+                _PanelStatusLaporan(
+                  laporan: _laporan!,
+                  deadline: deadline,
+                  editable: editable,
+                ),
+
+              // Search & Parameter Count Header
+              Container(
+                color: AppTheme.surface,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  children: [
+                    // Search Bar
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari jenis pemeriksaan...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppTheme.onSurfaceVariant,
+                          size: 20,
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.surfaceContainerLow,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                      ),
+                      onChanged: (v) => setState(() => _search = v.trim()),
+                    ),
+                    const SizedBox(height: 8),
+                    // Parameter count & draft indicator
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Menampilkan ${filtered.length} Parameter',
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: AppTheme.onSurfaceVariant,
+                                  ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:
+                                AppTheme.primaryContainer.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        );
-                      }
-                      final e = filtered[index - 1];
-                      return _FieldJenisPemeriksaan(
-                        examType: e,
-                        controller: _controllers[e.id]!,
-                        enabled: editable,
-                        isLast: index == filtered.length,
-                      );
-                    },
-                  ),
+                          child: Text(
+                            'Periode $namaBulan $_tahun',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Form Items List
+              Expanded(
+                child: _loadingData
+                    ? const Center(child: CircularProgressIndicator())
+                    : grouped.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Tidak ada jenis pemeriksaan yang cocok.',
+                              style: TextStyle(color: AppTheme.onSurfaceVariant),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+                            itemCount: grouped.keys.length,
+                            itemBuilder: (context, catIndex) {
+                              final catName = grouped.keys.elementAt(catIndex);
+                              final catItems = grouped[catName]!;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 12, bottom: 8),
+                                    child: Text(
+                                      catName,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                    ),
+                                  ),
+                                  ...catItems.map((e) {
+                                    return _ExamItemCard(
+                                      examType: e,
+                                      controller: _controllers[e.id] ??
+                                          TextEditingController(),
+                                      enabled: editable,
+                                    );
+                                  }),
+                                ],
+                              );
+                            },
+                          ),
+              ),
+            ],
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: (_saving || !editable) ? null : () => _simpan(submit: false),
-                      child: const Text('Simpan Draft'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: (_saving || !editable) ? null : () => _simpan(submit: true),
-                      child: _saving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Submit'),
-                    ),
+
+          // Fixed Bottom Action Bar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface.withValues(alpha: 0.95),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x14000000),
+                    blurRadius: 16,
+                    offset: Offset(0, -4),
                   ),
                 ],
+              ),
+              padding: const EdgeInsets.all(16),
+              child: SafeArea(
+                top: false,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: SizedBox(
+                            height: 48,
+                            child: OutlinedButton(
+                              onPressed: (_saving || !editable)
+                                  ? null
+                                  : () => _simpan(submit: false),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppTheme.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Simpan Draft'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 1,
+                          child: SizedBox(
+                            height: 48,
+                            child: FilledButton.icon(
+                              onPressed: (_saving || !editable)
+                                  ? null
+                                  : () => _simpan(submit: true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: _saving
+                                  ? const SizedBox.shrink()
+                                  : const Icon(Icons.send, size: 18),
+                              label: _saving
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Text('Kirim Laporan'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -283,45 +435,128 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
   }
 }
 
-class _FieldJenisPemeriksaan extends StatelessWidget {
-  const _FieldJenisPemeriksaan({
+class _ExamItemCard extends StatelessWidget {
+  const _ExamItemCard({
     required this.examType,
     required this.controller,
     required this.enabled,
-    required this.isLast,
   });
 
   final ExamTypeModel examType;
   final TextEditingController controller;
   final bool enabled;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(examType.nama, style: const TextStyle(fontSize: 14)),
-            ),
-            SizedBox(
-              width: 120,
-              child: TextFormField(
-                controller: controller,
-                enabled: enabled,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(
-                  labelText: 'Jumlah',
-                  isDense: true,
+    const satuan = 'sampel';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: enabled
+            ? AppTheme.surfaceContainerLowest
+            : AppTheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x0F000000)),
+        boxShadow: enabled
+            ? const [
+                BoxShadow(
+                  color: Color(0x08000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  examType.nama,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: enabled
+                            ? AppTheme.onSurface
+                            : AppTheme.onSurfaceVariant,
+                      ),
                 ),
               ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 130,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: TextFormField(
+                          controller: controller,
+                          enabled: enabled,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.right,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            fillColor: enabled
+                                ? AppTheme.surfaceContainerLow
+                                : AppTheme.surfaceContainerHigh,
+                            hintText: '0',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 36,
+                      child: Text(
+                        satuan,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: AppTheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (!enabled) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: const [
+                Icon(Icons.lock, size: 12, color: AppTheme.onSurfaceVariant),
+                SizedBox(width: 4),
+                Text(
+                  'TERKUNCI',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -341,16 +576,21 @@ class _PanelStatusLaporan extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final terkunci = !editable;
+    final bgColor = terkunci
+        ? AppTheme.errorContainer.withValues(alpha: 0.5)
+        : AppTheme.tertiaryContainer.withValues(alpha: 0.15);
+    final iconColor = terkunci ? AppTheme.error : AppTheme.tertiaryContainer;
+
     return Container(
       width: double.infinity,
-      color: terkunci ? Colors.red.shade50 : Colors.amber.shade50,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Icon(
-            terkunci ? Icons.lock_outline : Icons.info_outline,
+            terkunci ? Icons.lock : Icons.info_outline,
             size: 18,
-            color: terkunci ? Colors.red : Colors.orange.shade800,
+            color: iconColor,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -358,9 +598,13 @@ class _PanelStatusLaporan extends StatelessWidget {
               terkunci
                   ? 'Laporan terkunci (batas revisi terlewati). Hubungi Labkesda jika ingin merevisi.'
                   : 'Status: ${laporan.status.label}'
-                        '${laporan.disubmitPada != null ? ' • Disubmit ${formatTanggalWaktu(laporan.disubmitPada)}' : ''}'
-                        '${laporan.catatanRevisi != null ? '\nCatatan Labkesda: ${laporan.catatanRevisi}' : ''}',
-              style: const TextStyle(fontSize: 12),
+                      '${laporan.disubmitPada != null ? ' • Disubmit ${formatTanggalWaktu(laporan.disubmitPada)}' : ''}'
+                      '${laporan.catatanRevisi != null ? '\nCatatan Labkesda: ${laporan.catatanRevisi}' : ''}',
+              style: TextStyle(
+                fontSize: 12,
+                color: terkunci ? AppTheme.error : AppTheme.tertiaryContainer,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -372,8 +616,18 @@ class _PanelStatusLaporan extends StatelessWidget {
 class AppConstantsBulan {
   static String nama(int month) {
     const list = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     return list[month - 1];
   }

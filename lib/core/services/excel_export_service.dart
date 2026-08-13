@@ -23,6 +23,7 @@ class ExcelExportService {
     required List<PuskesmasModel> puskesmas,
     required List<ExamTypeModel> examTypes,
     required List<LaporanModel> semuaLaporan,
+    String periode = 'all',
   }) {
     final sortedPuskesmas = [...puskesmas]
       ..sort((a, b) => a.urutan.compareTo(b.urutan));
@@ -34,13 +35,23 @@ class ExcelExportService {
     final excel = Excel.createExcel();
     final defaultSheet = excel.getDefaultSheet();
 
-    // Hapus sheet default yang tidak dipakai.
-    if (defaultSheet != null && defaultSheet != _namaBulan.first) {
+    // Hapus sheet default
+    if (defaultSheet != null) {
       excel.delete(defaultSheet);
     }
 
+    // Sheet Bulanan
     for (var i = 0; i < 12; i++) {
       final bulan = i + 1;
+      
+      bool shouldInclude = false;
+      if (periode == 'all') shouldInclude = true;
+      else if (periode == 's1' && bulan <= 6) shouldInclude = true;
+      else if (periode == 's2' && bulan > 6) shouldInclude = true;
+      else if (periode == 'm$bulan') shouldInclude = true;
+
+      if (!shouldInclude) continue;
+
       final bulanLaporan = laporanSubmitted
           .where((l) => l.bulan == bulan)
           .toList();
@@ -55,11 +66,17 @@ class ExcelExportService {
       );
     }
 
-    // Rekap semester
+    // Sheet Rekap Semester
     for (final semester in const [
-      ('REKAP SEMESTER I', [1, 2, 3, 4, 5, 6]),
-      ('REKAP SEMESTER II', [7, 8, 9, 10, 11, 12]),
+      ('REKAP SEMESTER I', [1, 2, 3, 4, 5, 6], 's1'),
+      ('REKAP SEMESTER II', [7, 8, 9, 10, 11, 12], 's2'),
     ]) {
+      bool shouldInclude = false;
+      if (periode == 'all') shouldInclude = true;
+      else if (periode == semester.$3) shouldInclude = true;
+
+      if (!shouldInclude) continue;
+
       final nama = semester.$1;
       final bulanList = semester.$2;
       final semesterLaporan = laporanSubmitted
@@ -76,7 +93,10 @@ class ExcelExportService {
       );
     }
 
-    excel.setDefaultSheet(_namaBulan[DateTime.now().month - 1]);
+    if (excel.tables.keys.isNotEmpty) {
+      excel.setDefaultSheet(excel.tables.keys.first);
+    }
+    
     return excel.encode();
   }
 
@@ -111,7 +131,7 @@ class ExcelExportService {
     // --- Baris header ---
     final headerRow = <CellValue?>[
       TextCellValue('NO'),
-      TextCellValue('PUSKESMAS / UPT'),
+      TextCellValue('PUSKESMAS'),
     ];
     for (final e in examTypes) {
       headerRow.add(TextCellValue(e.nama));

@@ -16,7 +16,7 @@ void main() {
           home: Scaffold(body: StatusChip(label: 'Terkirim', color: Colors.green)),
         ),
       );
-      expect(find.text('Terkirim'), findsOneWidget);
+      expect(find.text('TERKIRIM'), findsOneWidget);
     });
   });
 

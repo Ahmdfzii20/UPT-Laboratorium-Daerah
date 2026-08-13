@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 
 /// Header bergradasi yang dipakai di semua dashboard.
 class GradientHeader extends StatelessWidget {
@@ -15,16 +16,22 @@ class GradientHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [scheme.primary, scheme.primary.withValues(alpha: 0.72)],
+          colors: [AppTheme.primary, AppTheme.primaryContainer],
         ),
         borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,46 +82,66 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final card = Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+    final card = Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x0F000000)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
                 ),
-                child: Icon(icon, color: color, size: 26),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    Text(
-                      label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        value,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              color: AppTheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -136,15 +163,20 @@ class SectionTitle extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
         ),
-        if (trailing != null) ?trailing,
+        ...[trailing].whereType<Widget>(),
       ],
     );
   }
 }
 
-/// Baris label + progress + nilai (misal kepatuhan per puskesmas).
+/// Baris label + progress + nilai.
 class ProgressRow extends StatelessWidget {
   const ProgressRow({
     super.key,
@@ -165,9 +197,8 @@ class ProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final fraction = max <= 0 ? 0.0 : (value / max).clamp(0.0, 1.0).toDouble();
-    final barColor = color ?? scheme.primary;
+    final barColor = color ?? AppTheme.primary;
     final pct = (fraction * 100).round();
 
     return InkWell(
@@ -191,7 +222,7 @@ class ProgressRow extends StatelessWidget {
                 Text(
                   detail ?? '$value/$max ($pct%)',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                        color: AppTheme.onSurfaceVariant,
                       ),
                 ),
               ],
@@ -202,7 +233,7 @@ class ProgressRow extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: fraction,
                 minHeight: 8,
-                backgroundColor: barColor.withValues(alpha: 0.12),
+                backgroundColor: AppTheme.surfaceContainerHigh,
                 valueColor: AlwaysStoppedAnimation(barColor),
               ),
             ),
@@ -222,17 +253,24 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 40, color: Colors.grey),
-            const SizedBox(height: 8),
-            Text(teks, textAlign: TextAlign.center),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x0F000000)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 40, color: AppTheme.outline),
+          const SizedBox(height: 8),
+          Text(
+            teks,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }

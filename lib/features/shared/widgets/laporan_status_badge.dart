@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/status_utils.dart';
 import '../../../models/deadline_model.dart';
 import '../../../models/laporan_model.dart';
-import '../../../core/utils/status_utils.dart';
 import 'status_chip.dart';
 
-Color statusColor(String status) {
+(Color, IconData?) statusVisuals(String status) {
   return switch (status) {
-    'submitted' || 'Terkirim' => Colors.green,
-    'revision_requested' || 'Revisi Diminta' => Colors.orange,
-    'Terlambat' => Colors.red,
-    _ => Colors.blueGrey,
+    'submitted' || 'Terkirim' => (const Color(0xFF005B6F), Icons.check_circle),
+    'revision_requested' || 'Revisi Diminta' || 'Revisi' => (
+        const Color(0xFF774815),
+        Icons.warning,
+      ),
+    'Terlambat' => (const Color(0xFFBA1A1A), Icons.error_outline),
+    'TERKUNCI' => (const Color(0xFF555F71), Icons.lock),
+    _ => (const Color(0xFF555F71), null),
   };
 }
 
@@ -32,9 +36,12 @@ class LaporanStatusBadge extends ConsumerWidget {
       batasInputHari: deadline.batasInputHari,
       batasRevisiHari: deadline.batasRevisiHari,
     );
+    final (color, icon) = statusVisuals(status);
+
     return StatusChip(
       label: status,
-      color: statusColor(status),
+      color: color,
+      icon: icon,
     );
   }
 }
