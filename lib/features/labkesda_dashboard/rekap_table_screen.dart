@@ -12,7 +12,6 @@ import '../../../models/laporan_model.dart';
 import '../../../models/puskesmas_model.dart';
 import '../../../providers/laporan_providers.dart';
 import '../../../providers/master_data_providers.dart';
-import '../../../dummy_data.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class RekapTableScreen extends ConsumerStatefulWidget {

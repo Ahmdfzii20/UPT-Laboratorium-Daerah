@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +39,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         // Tunggu dokumen /users/{uid} termuat sebelum memutuskan redirect.
         if (currentUserState.isLoading) return null;
         if (user == null || !user.aktif) {
+          return location == '/unauthorized' ? null : '/unauthorized';
+        }
+        
+        if (user.isAdmin && !kIsWeb) {
           return location == '/unauthorized' ? null : '/unauthorized';
         }
         final home = user.isAdmin
