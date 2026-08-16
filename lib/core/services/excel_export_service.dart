@@ -45,10 +45,15 @@ class ExcelExportService {
       final bulan = i + 1;
       
       bool shouldInclude = false;
-      if (periode == 'all') shouldInclude = true;
-      else if (periode == 's1' && bulan <= 6) shouldInclude = true;
-      else if (periode == 's2' && bulan > 6) shouldInclude = true;
-      else if (periode == 'm$bulan') shouldInclude = true;
+      if (periode == 'all') {
+        shouldInclude = true;
+      } else if (periode == 's1' && bulan <= 6) {
+        shouldInclude = true;
+      } else if (periode == 's2' && bulan > 6) {
+        shouldInclude = true;
+      } else if (periode == 'm$bulan') {
+        shouldInclude = true;
+      }
 
       if (!shouldInclude) continue;
 
@@ -72,8 +77,11 @@ class ExcelExportService {
       ('REKAP SEMESTER II', [7, 8, 9, 10, 11, 12], 's2'),
     ]) {
       bool shouldInclude = false;
-      if (periode == 'all') shouldInclude = true;
-      else if (periode == semester.$3) shouldInclude = true;
+      if (periode == 'all') {
+        shouldInclude = true;
+      } else if (periode == semester.$3) {
+        shouldInclude = true;
+      }
 
       if (!shouldInclude) continue;
 
