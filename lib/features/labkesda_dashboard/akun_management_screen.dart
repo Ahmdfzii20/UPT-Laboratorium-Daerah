@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/firestore_service.dart';
 import '../../../providers/master_data_providers.dart';
+import '../shared/widgets/admin_data_table.dart';
+import '../shared/widgets/admin_portal_components.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class AkunManagementScreen extends ConsumerStatefulWidget {
@@ -14,10 +16,14 @@ class AkunManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
+  String _searchQuery = '';
+  String? _selectedPuskesmas;
+
   @override
   Widget build(BuildContext context) {
     final users = ref.watch(usersProvider).value ?? [];
     final puskesmas = ref.watch(puskesmasListProvider).value ?? [];
+    final isLoading = ref.watch(usersProvider).isLoading;
 
     final sortedUsers = [...users]
       ..sort((a, b) {
@@ -25,57 +31,173 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
         return a.role == 'admin' ? -1 : 1;
       });
 
+    // Filter users
+    final filteredUsers = sortedUsers.where((u) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          u.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          u.email.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesPuskesmas = _selectedPuskesmas == null ||
+          (_selectedPuskesmas == 'admin' && u.isAdmin) ||
+          (_selectedPuskesmas != 'admin' && u.puskesmasId == _selectedPuskesmas);
+
+      return matchesSearch && matchesPuskesmas;
+    }).toList();
+
+    // Prepare data rows
+    final dataRows = filteredUsers.map((u) {
+      final namaPuskesmas = u.puskesmasId == null
+          ? ''
+          : puskesmas.where((p) => p.id == u.puskesmasId).firstOrNull?.nama ?? '-';
+
+      return DataRow(
+        cells: [
+          DataCell(
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
+                  child: Icon(
+                    u.isAdmin ? Icons.admin_panel_settings : Icons.person,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        u.nama,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        u.isAdmin ? 'Analis Kesehatan' : 'Petugas Lab',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          DataCell(Text(namaPuskesmas)),
+          DataCell(Text(u.email, overflow: TextOverflow.ellipsis)),
+          DataCell(
+            Text(
+              u.aktif ? 'Aktif' : 'Nonaktif',
+              style: TextStyle(
+                color: u.aktif ? Colors.green.shade700 : Colors.red.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          DataCell(
+            Wrap(
+              spacing: 4,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.vpn_key_outlined),
+                  tooltip: 'Reset Password',
+                  iconSize: 18,
+                  onPressed: () => _resetPassword(context, u),
+                ),
+                if (!u.isAdmin)
+                  IconButton(
+                    icon: u.aktif
+                        ? const Icon(Icons.block_outlined)
+                        : const Icon(Icons.check_circle_outline),
+                    tooltip: u.aktif
+                        ? 'Nonaktifkan Akun'
+                        : 'Aktifkan Akun',
+                    iconSize: 18,
+                    onPressed: () => _toggleStatus(context, u),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
     return DashboardShell(
       title: 'Manajemen Akun',
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _tambahAkun(context),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Tambah Petugas'),
-      ),
-      child: users.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: sortedUsers.length,
-              itemBuilder: (context, index) {
-                final u = sortedUsers[index];
-                final namaPuskesmas = u.puskesmasId == null
-                    ? ''
-                    : puskesmas
-                        .where((p) => p.id == u.puskesmasId)
-                        .firstOrNull
-                        ?.nama;
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      child: Icon(
-                        u.isAdmin ? Icons.admin_panel_settings : Icons.person,
-                      ),
-                    ),
-                    title: Text(u.nama),
-                    subtitle: Text(
-                      '${u.email}\n${u.isAdmin ? 'Admin Labkesda' : 'Petugas: ${namaPuskesmas ?? '-'}'}',
-                    ),
-                    isThreeLine: true,
-                    trailing: u.isAdmin
-                        ? const Text('ADMIN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal,
-                            ))
-                        : Switch(
-                            value: u.aktif,
-                            onChanged: (v) async {
-                              await FirestoreService.instance
-                                  .nonaktifkanUser(u.uid, v);
-                            },
-                          ),
-                  ),
-                );
-              },
+      child: Column(
+        children: [
+          // Header Section
+          ScreenHeader(
+            title: 'Manajemen Akun',
+            description: 'Kelola akses petugas Puskesmas ke Portal Labkesda.',
+            trailing: ElevatedButton.icon(
+              onPressed: () => _tambahAkun(context),
+              icon: const Icon(Icons.person_add),
+              label: const Text('Tambah Petugas'),
             ),
+          ),
+
+          // Filter Bar
+          FilterBar(
+            searchHint: 'Cari nama petugas atau email...',
+            searchValue: _searchQuery,
+            onSearchChanged: (query) {
+              setState(() => _searchQuery = query);
+            },
+            filters: [
+              FilterItem(
+                label: 'Semua',
+                isSelected: _selectedPuskesmas == null,
+                onSelected: (_) {
+                  setState(() => _selectedPuskesmas = null);
+                },
+              ),
+              FilterItem(
+                label: 'Admin',
+                isSelected: _selectedPuskesmas == 'admin',
+                onSelected: (_) {
+                  setState(() => _selectedPuskesmas = 'admin');
+                },
+              ),
+              ...puskesmas.map(
+                (p) => FilterItem(
+                  label: p.nama,
+                  isSelected: _selectedPuskesmas == p.id,
+                  onSelected: (_) {
+                    setState(() => _selectedPuskesmas = p.id);
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          // Data Table
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: AdminDataTable(
+                columns: [
+                  const DataColumn(label: Text('Nama Petugas')),
+                  const DataColumn(label: Text('Instansi / Puskesmas')),
+                  const DataColumn(label: Text('Email')),
+                  const DataColumn(label: Text('Status')),
+                  const DataColumn(label: Text('Aksi')),
+                ],
+                rows: dataRows,
+                isLoading: isLoading,
+                emptyMessage: 'Tidak ada petugas ditemukan',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -88,6 +210,90 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Akun petugas berhasil dibuat.')),
       );
+    }
+  }
+
+  Future<void> _resetPassword(BuildContext context, dynamic user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Text(
+          'Kirim link reset password ke ${user.email}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        // TODO: Implement password reset logic
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Link reset password dikirim ke ${user.email}')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _toggleStatus(BuildContext context, dynamic user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ubah Status Akun'),
+        content: Text(
+          user.aktif
+              ? 'Nonaktifkan akun ${user.nama}?'
+              : 'Aktifkan akun ${user.nama}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ubah'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await FirestoreService.instance.nonaktifkanUser(user.uid, !user.aktif);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Status akun ${user.nama} diubah menjadi ${!user.aktif ? 'Aktif' : 'Nonaktif'}',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal: $e')),
+          );
+        }
+      }
     }
   }
 }

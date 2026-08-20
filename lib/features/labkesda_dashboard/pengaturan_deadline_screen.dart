@@ -5,6 +5,7 @@ import '../../../core/services/firestore_service.dart';
 import '../../../models/deadline_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/settings_provider.dart';
+import '../shared/widgets/admin_portal_components.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class PengaturanDeadlineScreen extends ConsumerStatefulWidget {
@@ -96,86 +97,127 @@ class _PengaturanDeadlineScreenState
 
     return DashboardShell(
       title: 'Pengaturan Batas Waktu',
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Card(
-              child: Padding(
+      child: Column(
+        children: [
+          // Header Section
+          ScreenHeader(
+            title: 'Pengaturan Sistem',
+            description: 'Atur batas waktu input dan revisi laporan untuk semua puskesmas',
+          ),
+          
+          // Settings Content
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Batas Input Laporan (X)',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Jumlah hari sejak awal bulan berikutnya untuk laporan bulan N diinput/disubmit.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _batasInput,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Batas input (hari)',
-                        suffixText: 'hari',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Batas Revisi Setelah Submit (Y)',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Jumlah hari sejak laporan disubmit, selama itu petugas bebas mengedit.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _batasRevisi,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Batas revisi (hari)',
-                        suffixText: 'hari',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      initialValue: _satuan,
-                      decoration: const InputDecoration(labelText: 'Satuan'),
-                      items: const [
-                        DropdownMenuItem(value: 'kalender', child: Text('Hari kalender')),
-                        DropdownMenuItem(value: 'kerja', child: Text('Hari kerja')),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: AdminCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Batas Input Laporan (X)',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Jumlah hari sejak awal bulan berikutnya untuk laporan bulan N diinput/disubmit.',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _batasInput,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Batas input (hari)',
+                            suffixText: 'hari',
+                            helperText: 'Contoh: 15 hari setelah awal bulan berikutnya',
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Batas Revisi Setelah Submit (Y)',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Jumlah hari sejak laporan disubmit, selama itu petugas bebas mengedit.',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _batasRevisi,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Batas revisi (hari)',
+                            suffixText: 'hari',
+                            helperText: 'Contoh: 3 hari untuk revisi setelah submit',
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        DropdownButtonFormField<String>(
+                          initialValue: _satuan,
+                          decoration: const InputDecoration(
+                            labelText: 'Satuan Waktu',
+                            helperText: 'Pilih jenis penghitungan hari',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'kalender',
+                              child: Text('Hari kalender'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'kerja',
+                              child: Text('Hari kerja'),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => _satuan = v ?? 'kalender'),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'MVP hanya menghitung hari kalender. Opsi "hari kerja" disimpan untuk pengembangan lanjutan.',
+                                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton.tonalIcon(
+                          onPressed: _saving ? null : _simpan,
+                          icon: _saving
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.save_outlined),
+                          label: Text(
+                            _saving ? 'Menyimpan...' : 'Simpan Pengaturan',
+                          ),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _satuan = v ?? 'kalender'),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Catatan: MVP hanya menghitung hari kalender. Opsi "hari kerja" disimpan untuk pengembangan lanjutan.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _saving ? null : _simpan,
-                      child: _saving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Simpan Pengaturan'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

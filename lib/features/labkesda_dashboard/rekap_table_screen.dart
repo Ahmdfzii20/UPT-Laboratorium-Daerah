@@ -12,6 +12,7 @@ import '../../../models/laporan_model.dart';
 import '../../../models/puskesmas_model.dart';
 import '../../../providers/laporan_providers.dart';
 import '../../../providers/master_data_providers.dart';
+import '../shared/widgets/admin_portal_components.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class RekapTableScreen extends ConsumerStatefulWidget {
@@ -57,66 +58,87 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
 
     return DashboardShell(
       title: 'Rekap Data',
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: IconButton(
-            tooltip: 'Export Excel',
-            onPressed: _exporting ? null : () => _export(context, _tahun),
-            icon: _exporting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.file_download_outlined),
-          ),
-        ),
-      ],
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          // Header Section
+          ScreenHeader(
+            title: 'Rekap & Export',
+            description: 'Tabel gabungan pelaporan dari semua puskesmas untuk ekspor Excel',
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            trailing: Tooltip(
+              message: 'Export Excel',
+              child: FilledButton.icon(
+                onPressed: _exporting ? null : () => _export(context, _tahun),
+                icon: _exporting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.file_download_outlined),
+                label: const Text('Export Excel'),
+              ),
+            ),
+          ),
+
+          // Filter Section
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              DropdownButton<String>(
-                value: _periode,
-                items: [
-                  const DropdownMenuItem(
-                    value: 'all',
-                    child: Text('Seluruh tahun'),
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                // Periode Filter
+                Chip(
+                  label: DropdownButton<String>(
+                    value: _periode,
+                    underline: const SizedBox(),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'all',
+                        child: Text('Seluruh tahun'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 's1',
+                        child: Text('Semester I (Jan - Jun)'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 's2',
+                        child: Text('Semester II (Jul - Des)'),
+                      ),
+                      for (var m = 1; m <= 12; m++)
+                        DropdownMenuItem(
+                          value: 'm$m',
+                          child: Text(AppConstants.namaBulan[m - 1]),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _periode = v ?? 'all'),
                   ),
-                  const DropdownMenuItem(
-                    value: 's1',
-                    child: Text('Semester I (Jan - Jun)'),
+                ),
+                // Year Filter
+                Chip(
+                  label: DropdownButton<int>(
+                    value: _tahun,
+                    underline: const SizedBox(),
+                    items: [
+                      for (var y = DateTime.now().year; y >= 2025; y--)
+                        DropdownMenuItem(value: y, child: Text('$y')),
+                    ],
+                    onChanged: (v) => setState(() => _tahun = v ?? _tahun),
                   ),
-                  const DropdownMenuItem(
-                    value: 's2',
-                    child: Text('Semester II (Jul - Des)'),
+                ),
+                // Summary
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(
+                    '${sortedPuskesmas.length} puskesmas • ${sortedExamTypes.length} jenis pemeriksaan',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  for (var m = 1; m <= 12; m++)
-                    DropdownMenuItem(
-                      value: 'm$m',
-                      child: Text(AppConstants.namaBulan[m - 1]),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _periode = v ?? 'all'),
-              ),
-              DropdownButton<int>(
-                value: _tahun,
-                items: [
-                  for (var y = DateTime.now().year; y >= 2025; y--)
-                    DropdownMenuItem(value: y, child: Text('$y')),
-                ],
-                onChanged: (v) => setState(() => _tahun = v ?? _tahun),
-              ),
-              Text(
-                '${sortedPuskesmas.length} puskesmas • ${sortedExamTypes.length} jenis',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+                ),
+              ],
           ),
         ),
           Expanded(
@@ -130,7 +152,7 @@ class _RekapTableScreenState extends ConsumerState<RekapTableScreen> {
                         child: SingleChildScrollView(
                           controller: _scrollController,
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           child: _RekapTabel(
                             puskesmas: sortedPuskesmas,
                             examTypes: sortedExamTypes,
