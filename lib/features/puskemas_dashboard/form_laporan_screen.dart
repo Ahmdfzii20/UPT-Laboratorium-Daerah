@@ -56,8 +56,11 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     final examTypes = ref.read(examTypesProvider).value ?? [];
     if (examTypes.isEmpty) return;
 
-    final laporan = await FirestoreService.instance
-        .getLaporan(puskesmasId, _tahun, _bulan);
+    final laporan = await FirestoreService.instance.getLaporan(
+      puskesmasId,
+      _tahun,
+      _bulan,
+    );
     if (!mounted) return;
     for (final c in _controllers.values) {
       c.dispose();
@@ -84,10 +87,16 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
   }
 
   bool _isEditable(DeadlineModel deadline) {
-    if (_laporan == null) return true;
+    final masihDalamBatasInput = masihBisaInput(
+      tahun: _tahun,
+      bulan: _bulan,
+      batasInputHari: deadline.batasInputHari,
+    );
+
+    if (_laporan == null) return masihDalamBatasInput;
     if (_laporan!.status == LaporanStatus.draft ||
         _laporan!.status == LaporanStatus.revisionRequested) {
-      return true;
+      return masihDalamBatasInput;
     }
     return masihBisaDirevisi(
       disubmitPada: _laporan!.disubmitPada,
@@ -106,19 +115,40 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
   Future<void> _simpan({required bool submit}) async {
     final examTypes = ref.read(examTypesProvider).value ?? [];
     if (examTypes.isEmpty) {
-      _showSnack('Data jenis pemeriksaan belum tersedia.');
+      await _showInputResult(
+        title: 'Input belum dapat disimpan',
+        message: 'Data jenis pemeriksaan belum tersedia.',
+        isSuccess: false,
+      );
       return;
     }
     final user = ref.read(currentUserProvider).value;
     if (user == null) return;
+    final deadline = ref.read(deadlineProvider).value ?? const DeadlineModel();
+
+    if (!masihBisaInput(
+      tahun: _tahun,
+      bulan: _bulan,
+      batasInputHari: deadline.batasInputHari,
+    )) {
+      await _showInputResult(
+        title: 'Input ditolak',
+        message: 'Batas waktu input laporan sudah terlewati.',
+        isSuccess: false,
+      );
+      return;
+    }
 
     setState(() => _saving = true);
     try {
       final hasil = _collectHasil(examTypes);
       final now = DateTime.now();
       final existing = _laporan;
-      final laporanId = FirestoreService.instance
-          .generateLaporanId(user.puskesmasId!, _tahun, _bulan);
+      final laporanId = FirestoreService.instance.generateLaporanId(
+        user.puskesmasId!,
+        _tahun,
+        _bulan,
+      );
 
       if (existing == null) {
         final laporan = LaporanModel(
@@ -153,20 +183,59 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
       }
 
       if (mounted) {
-        _showSnack(submit
-            ? 'Laporan berhasil dikirim ke Labkesda.'
-            : 'Draft berhasil disimpan.');
+        await _showInputResult(
+          title: submit ? 'Laporan berhasil dikirim' : 'Draft tersimpan',
+          message: submit
+              ? 'Laporan sudah berhasil dikirim ke Labkesda.'
+              : 'Draft laporan berhasil disimpan dan dapat dilanjutkan nanti.',
+          isSuccess: true,
+        );
         _kembali();
       }
     } catch (e) {
-      if (mounted) _showSnack('Gagal menyimpan: $e');
+      if (mounted) {
+        await _showInputResult(
+          title: 'Input gagal disimpan',
+          message: 'Terjadi kesalahan saat menyimpan laporan.\n$e',
+          isSuccess: false,
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  Future<void> _showInputResult({
+    required String title,
+    required String message,
+    required bool isSuccess,
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final color = isSuccess
+            ? Colors.green
+            : Theme.of(context).colorScheme.error;
+        return AlertDialog(
+          icon: Icon(
+            isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+            color: color,
+            size: 64,
+          ),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Text(message, textAlign: TextAlign.center),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: Icon(isSuccess ? Icons.done : Icons.close),
+              label: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _kembali() {
@@ -186,11 +255,13 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
 
     final editable = _isEditable(deadline);
     final filtered = examTypes
-        .where((e) =>
-            e.aktif &&
-            (_search.isEmpty ||
-                e.nama.toLowerCase().contains(_search.toLowerCase()) ||
-                e.kategori.toLowerCase().contains(_search.toLowerCase())))
+        .where(
+          (e) =>
+              e.aktif &&
+              (_search.isEmpty ||
+                  e.nama.toLowerCase().contains(_search.toLowerCase()) ||
+                  e.kategori.toLowerCase().contains(_search.toLowerCase())),
+        )
         .toList();
 
     // Group filtered items by category
@@ -211,9 +282,9 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
         ),
         title: Text(
           'Form Input',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         actions: const [
           Padding(
@@ -237,8 +308,10 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
               // Search & Parameter Count Header
               Container(
                 color: AppTheme.surface,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   children: [
                     // Search Bar
@@ -254,7 +327,9 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
                         filled: true,
                         fillColor: AppTheme.surfaceContainerLow,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                       ),
                       onChanged: (v) => setState(() => _search = v.trim()),
                     ),
@@ -265,24 +340,23 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
                       children: [
                         Text(
                           'Menampilkan ${filtered.length} Parameter',
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: AppTheme.onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: AppTheme.onSurfaceVariant),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 2),
+                            horizontal: 10,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color:
-                                AppTheme.primaryContainer.withValues(alpha: 0.15),
+                            color: AppTheme.primaryContainer.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             'Periode $namaBulan $_tahun',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
+                            style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   color: AppTheme.primary,
                                   fontWeight: FontWeight.w600,
@@ -301,48 +375,49 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
                 child: _loadingData
                     ? const Center(child: CircularProgressIndicator())
                     : grouped.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Tidak ada jenis pemeriksaan yang cocok.',
-                              style: TextStyle(color: AppTheme.onSurfaceVariant),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-                            itemCount: grouped.keys.length,
-                            itemBuilder: (context, catIndex) {
-                              final catName = grouped.keys.elementAt(catIndex);
-                              final catItems = grouped[catName]!;
+                    ? const Center(
+                        child: Text(
+                          'Tidak ada jenis pemeriksaan yang cocok.',
+                          style: TextStyle(color: AppTheme.onSurfaceVariant),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+                        itemCount: grouped.keys.length,
+                        itemBuilder: (context, catIndex) {
+                          final catName = grouped.keys.elementAt(catIndex);
+                          final catItems = grouped[catName]!;
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        top: 12, bottom: 8),
-                                    child: Text(
-                                      catName,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.onSurface,
-                                          ),
-                                    ),
-                                  ),
-                                  ...catItems.map((e) {
-                                    return _ExamItemCard(
-                                      examType: e,
-                                      controller: _controllers[e.id] ??
-                                          TextEditingController(),
-                                      enabled: editable,
-                                    );
-                                  }),
-                                ],
-                              );
-                            },
-                          ),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 12,
+                                  bottom: 8,
+                                ),
+                                child: Text(
+                                  catName,
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.onSurface,
+                                      ),
+                                ),
+                              ),
+                              ...catItems.map((e) {
+                                return _ExamItemCard(
+                                  examType: e,
+                                  controller:
+                                      _controllers[e.id] ??
+                                      TextEditingController(),
+                                  enabled: editable,
+                                );
+                              }),
+                            ],
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -415,7 +490,8 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text('Kirim Laporan'),
@@ -481,11 +557,11 @@ class _ExamItemCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: enabled
-                            ? AppTheme.onSurface
-                            : AppTheme.onSurfaceVariant,
-                      ),
+                    fontWeight: FontWeight.w500,
+                    color: enabled
+                        ? AppTheme.onSurface
+                        : AppTheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -501,15 +577,13 @@ class _ExamItemCard extends StatelessWidget {
                           enabled: enabled,
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.right,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             fillColor: enabled
                                 ? AppTheme.surfaceContainerLow
                                 : AppTheme.surfaceContainerHigh,
@@ -528,9 +602,9 @@ class _ExamItemCard extends StatelessWidget {
                       child: Text(
                         satuan,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontSize: 12,
-                              color: AppTheme.onSurfaceVariant,
-                            ),
+                          fontSize: 12,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -598,8 +672,8 @@ class _PanelStatusLaporan extends StatelessWidget {
               terkunci
                   ? 'Laporan terkunci (batas revisi terlewati). Hubungi Labkesda jika ingin merevisi.'
                   : 'Status: ${laporan.status.label}'
-                      '${laporan.disubmitPada != null ? ' • Disubmit ${formatTanggalWaktu(laporan.disubmitPada)}' : ''}'
-                      '${laporan.catatanRevisi != null ? '\nCatatan Labkesda: ${laporan.catatanRevisi}' : ''}',
+                        '${laporan.disubmitPada != null ? ' • Disubmit ${formatTanggalWaktu(laporan.disubmitPada)}' : ''}'
+                        '${laporan.catatanRevisi != null ? '\nCatatan Labkesda: ${laporan.catatanRevisi}' : ''}',
               style: TextStyle(
                 fontSize: 12,
                 color: terkunci ? AppTheme.error : AppTheme.tertiaryContainer,

@@ -48,10 +48,7 @@ class ScreenHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 16),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 16), trailing!],
         ],
       ),
     );
@@ -66,6 +63,7 @@ class FilterBar extends StatelessWidget {
     this.onSearchChanged,
     this.searchValue,
     this.filters = const [],
+    this.useDropdown = false,
     this.onFilterTap,
   });
 
@@ -73,6 +71,7 @@ class FilterBar extends StatelessWidget {
   final void Function(String)? onSearchChanged;
   final String? searchValue;
   final List<FilterItem> filters;
+  final bool useDropdown;
   final VoidCallback? onFilterTap;
 
   @override
@@ -107,22 +106,50 @@ class FilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final filter in filters)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(filter.label),
-                        onSelected: filter.onSelected,
-                        selected: filter.isSelected,
-                      ),
+            child: useDropdown
+                ? DropdownButtonFormField<String>(
+                    initialValue: filters
+                        .where((filter) => filter.isSelected)
+                        .firstOrNull
+                        ?.value,
+                    decoration: const InputDecoration(
+                      labelText: 'Filter Puskesmas',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                ],
-              ),
-            ),
+                    items: [
+                      for (final filter in filters)
+                        DropdownMenuItem(
+                          value: filter.value,
+                          child: Text(
+                            filter.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      final selected = filters.firstWhere(
+                        (filter) => filter.value == value,
+                      );
+                      selected.onSelected?.call(true);
+                    },
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final filter in filters)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(filter.label),
+                              onSelected: filter.onSelected,
+                              selected: filter.isSelected,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
           ),
           if (onFilterTap != null) ...[
             const SizedBox(width: 8),
@@ -142,15 +169,17 @@ class FilterBar extends StatelessWidget {
 }
 
 class FilterItem {
-  final String label;
-  final bool isSelected;
-  final void Function(bool)? onSelected;
-
   FilterItem({
     required this.label,
+    this.value,
     this.isSelected = false,
     this.onSelected,
   });
+
+  final String label;
+  final String? value;
+  final bool isSelected;
+  final void Function(bool)? onSelected;
 }
 
 /// Status badge for showing status in tables
@@ -242,10 +271,7 @@ class AdminCard extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: padding,
-            child: child,
-          ),
+          child: Padding(padding: padding, child: child),
         ),
       ),
     );
