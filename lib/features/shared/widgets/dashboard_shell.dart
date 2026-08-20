@@ -17,25 +17,52 @@ class _Dest {
 }
 
 const _adminDests = <_Dest>[
-  _Dest('/labkesda/dashboard', 'Dashboard', Icons.dashboard_outlined,
-      Icons.dashboard),
-  _Dest('/labkesda/monitoring', 'Monitoring', Icons.grid_view_outlined,
-      Icons.grid_view),
-  _Dest('/labkesda/rekap', 'Rekap & Export', Icons.table_chart_outlined,
-      Icons.table_chart),
-  _Dest('/labkesda/master-data', 'Master Data', Icons.storage_outlined,
-      Icons.storage),
-  _Dest('/labkesda/akun', 'Manajemen Akun', Icons.manage_accounts_outlined,
-      Icons.manage_accounts),
-  _Dest('/labkesda/deadline', 'Batas Waktu', Icons.schedule_outlined,
-      Icons.schedule),
+  _Dest(
+    '/labkesda/dashboard',
+    'Dashboard',
+    Icons.dashboard_outlined,
+    Icons.dashboard,
+  ),
+  _Dest(
+    '/labkesda/monitoring',
+    'Monitoring',
+    Icons.grid_view_outlined,
+    Icons.grid_view,
+  ),
+  _Dest(
+    '/labkesda/rekap',
+    'Rekap & Export',
+    Icons.table_chart_outlined,
+    Icons.table_chart,
+  ),
+  _Dest(
+    '/labkesda/master-data',
+    'Master Data',
+    Icons.storage_outlined,
+    Icons.storage,
+  ),
+  _Dest(
+    '/labkesda/akun',
+    'Manajemen Akun',
+    Icons.manage_accounts_outlined,
+    Icons.manage_accounts,
+  ),
+  _Dest(
+    '/labkesda/deadline',
+    'Batas Waktu',
+    Icons.schedule_outlined,
+    Icons.schedule,
+  ),
 ];
 
 const _puskesmasDests = <_Dest>[
-  _Dest('/puskesmas/dashboard', 'Beranda', Icons.dashboard_outlined,
-      Icons.dashboard),
-  _Dest('/puskesmas/histori', 'Histori', Icons.history_outlined,
-      Icons.history),
+  _Dest(
+    '/puskesmas/dashboard',
+    'Beranda',
+    Icons.dashboard_outlined,
+    Icons.dashboard,
+  ),
+  _Dest('/puskesmas/histori', 'Histori', Icons.history_outlined, Icons.history),
 ];
 
 class DashboardShell extends ConsumerWidget {
@@ -73,12 +100,13 @@ class DashboardShell extends ConsumerWidget {
       }
     }
 
-    final sectionSubtitle = sectionName ??
+    final sectionSubtitle =
+        sectionName ??
         (currentPath.contains('histori')
             ? 'Histori'
             : currentPath.contains('form')
-                ? 'Form Input'
-                : 'Beranda');
+            ? 'Form Input'
+            : 'Beranda');
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -127,13 +155,15 @@ class DashboardShell extends ConsumerWidget {
             children: [
               if (!isMobile)
                 _buildRail(
-                    context, ref, user, dests, selectedIndex, onSelected),
-              Expanded(
-                child: SafeArea(
-                  top: false,
-                  bottom: false,
-                  child: child,
+                  context,
+                  ref,
+                  user,
+                  dests,
+                  selectedIndex,
+                  onSelected,
                 ),
+              Expanded(
+                child: SafeArea(top: false, bottom: false, child: child),
               ),
             ],
           ),
@@ -192,10 +222,6 @@ class DashboardShell extends ConsumerWidget {
         color: AppTheme.onSecondaryContainer,
         fontSize: 12,
       ),
-      leading: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: AppLogo(size: 40),
-      ),
       destinations: [
         for (final d in dests)
           NavigationRailDestination(
@@ -225,11 +251,11 @@ class DashboardShell extends ConsumerWidget {
     if (context.mounted) context.go('/login');
   }
 
-  void _showProfileSheet(
-      BuildContext context, WidgetRef ref, UserModel? user) {
+  void _showProfileSheet(BuildContext context, WidgetRef ref, UserModel? user) {
     final nama = user?.nama ?? 'Petugas Lab';
-    final subtitle =
-        user?.isAdmin == true ? 'Admin Labkesda' : 'Petugas Puskesmas';
+    final subtitle = user?.isAdmin == true
+        ? 'Admin Labkesda'
+        : 'Petugas Puskesmas';
 
     showModalBottomSheet<void>(
       context: context,
@@ -267,24 +293,21 @@ class DashboardShell extends ConsumerWidget {
                 nama,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               if (user?.email case final email?) ...[
                 const SizedBox(height: 2),
-                Text(
-                  email,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(email, style: Theme.of(context).textTheme.bodySmall),
               ],
               const SizedBox(height: 24),
               SizedBox(
