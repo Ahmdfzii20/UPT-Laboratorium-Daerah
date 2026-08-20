@@ -9,6 +9,7 @@ import '../../../providers/laporan_providers.dart';
 import '../../../providers/master_data_providers.dart';
 import '../../../providers/settings_provider.dart';
 import '../shared/widgets/admin_laporan_dialog.dart';
+import '../shared/widgets/admin_portal_components.dart';
 import '../shared/widgets/dashboard_shell.dart';
 
 class MonitoringStatusScreen extends ConsumerStatefulWidget {
@@ -52,11 +53,13 @@ class _MonitoringStatusScreenState extends ConsumerState<MonitoringStatusScreen>
 
     return DashboardShell(
       title: 'Monitoring Status Pelaporan',
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: Center(
-            child: DropdownButton<int>(
+      child: Column(
+        children: [
+          // Header Section
+          ScreenHeader(
+            title: 'Monitoring Laporan',
+            description: 'Matriks puskesmas × bulan untuk memantau status pelaporan ${DateTime.now().year}',
+            trailing: DropdownButton<int>(
               value: _tahun,
               dropdownColor: Theme.of(context).colorScheme.surface,
               items: [
@@ -66,14 +69,12 @@ class _MonitoringStatusScreenState extends ConsumerState<MonitoringStatusScreen>
               onChanged: (v) => setState(() => _tahun = v ?? _tahun),
             ),
           ),
-        ),
-      ],
-      child: Column(
-        children: [
+
+          // Summary Statistics
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Wrap(
-              spacing: 8,
+              spacing: 12,
               runSpacing: 8,
               children: [
                 _ChipRingkasan(
@@ -99,8 +100,10 @@ class _MonitoringStatusScreenState extends ConsumerState<MonitoringStatusScreen>
               ],
             ),
           ),
+
+          // Legend
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Wrap(
               spacing: 16,
               runSpacing: 8,
@@ -113,54 +116,59 @@ class _MonitoringStatusScreenState extends ConsumerState<MonitoringStatusScreen>
               ],
             ),
           ),
+
+          // Data Table
           Expanded(
             child: puskesmas.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                : Padding(
+                    padding: const EdgeInsets.all(16),
                     child: SingleChildScrollView(
-                      child: DataTable(
-                        headingRowHeight: 48,
-                        dataRowMinHeight: 40,
-                        dataRowMaxHeight: 44,
-                        columns: [
-                          const DataColumn(label: Text('PUSKESMAS')),
-                          for (var m = 1; m <= 12; m++)
-                            DataColumn(
-                              label: Text(
-                                AppConstants.namaBulanSingkat[m - 1],
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ),
-                        ],
-                        rows: [
-                          for (final p in sortedPuskesmas)
-                            DataRow(
-                              cells: [
-                                DataCell(
-                                  SizedBox(
-                                    width: 180,
-                                    child: Text(
-                                      p.nama,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
+                      scrollDirection: Axis.horizontal,
+                      child: SingleChildScrollView(
+                        child: DataTable(
+                          headingRowHeight: 48,
+                          dataRowMinHeight: 40,
+                          dataRowMaxHeight: 44,
+                          columns: [
+                            const DataColumn(label: Text('PUSKESMAS')),
+                            for (var m = 1; m <= 12; m++)
+                              DataColumn(
+                                label: Text(
+                                  AppConstants.namaBulanSingkat[m - 1],
+                                  style: const TextStyle(fontSize: 11),
                                 ),
-                                for (var m = 1; m <= 12; m++)
+                              ),
+                          ],
+                          rows: [
+                            for (final p in sortedPuskesmas)
+                              DataRow(
+                                cells: [
                                   DataCell(
-                                    _sel(
-                                      laporan.where((l) =>
-                                              l.puskesmasId == p.id &&
-                                              l.bulan == m)
-                                          .firstOrNull,
-                                      deadline,
+                                    SizedBox(
+                                      width: 180,
+                                      child: Text(
+                                        p.nama,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
                                     ),
                                   ),
-                              ],
-                            ),
-                        ],
+                                  for (var m = 1; m <= 12; m++)
+                                    DataCell(
+                                      _sel(
+                                        laporan.where((l) =>
+                                                l.puskesmasId == p.id &&
+                                                l.bulan == m)
+                                            .firstOrNull,
+                                        deadline,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

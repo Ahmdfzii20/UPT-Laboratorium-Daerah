@@ -38,24 +38,29 @@ class _MasterDataScreenState extends ConsumerState<MasterDataScreen>
         controller: _tabController,
         tabs: const [Tab(text: 'Puskesmas'), Tab(text: 'Jenis Pemeriksaan')],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (_tabController.index == 0) {
-            _editPuskesmas(context, ref, null);
-          } else {
-            _editExamType(context, ref, null);
-          }
+      floatingActionButton: ListenableBuilder(
+        listenable: _tabController,
+        builder: (context, _) {
+          return FloatingActionButton.extended(
+            onPressed: () {
+              if (_tabController.index == 0) {
+                _editPuskesmas(context, null);
+              } else {
+                _editExamType(context, null);
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: Text(_tabController.index == 0
+                ? 'Tambah Puskesmas'
+                : 'Tambah Jenis Pemeriksaan'),
+          );
         },
-        icon: const Icon(Icons.add),
-        label: Text(_tabController.index == 0
-            ? 'Tambah Puskesmas'
-            : 'Tambah Jenis Pemeriksaan'),
       ),
       child: TabBarView(
         controller: _tabController,
         children: [
-          _TabPuskesmas(onEdit: (p) => _editPuskesmas(context, ref, p)),
-          _TabExamTypes(onEdit: (e) => _editExamType(context, ref, e)),
+          _TabPuskesmas(onEdit: (p) => _editPuskesmas(context, p)),
+          _TabExamTypes(onEdit: (e) => _editExamType(context, e)),
         ],
       ),
     );
@@ -63,7 +68,6 @@ class _MasterDataScreenState extends ConsumerState<MasterDataScreen>
 
   Future<void> _editPuskesmas(
     BuildContext context,
-    WidgetRef ref,
     PuskesmasModel? existing,
   ) async {
     final result = await showDialog<bool>(
@@ -78,7 +82,6 @@ class _MasterDataScreenState extends ConsumerState<MasterDataScreen>
 
   Future<void> _editExamType(
     BuildContext context,
-    WidgetRef ref,
     ExamTypeModel? existing,
   ) async {
     final result = await showDialog<bool>(
