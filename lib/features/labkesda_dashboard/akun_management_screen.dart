@@ -27,19 +27,24 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
 
     final sortedUsers = [...users]
       ..sort((a, b) {
-        if (a.role == b.role) return a.nama.toLowerCase().compareTo(b.nama.toLowerCase());
+        if (a.role == b.role) {
+          return a.nama.toLowerCase().compareTo(b.nama.toLowerCase());
+        }
         return a.role == 'admin' ? -1 : 1;
       });
 
     // Filter users
     final filteredUsers = sortedUsers.where((u) {
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           u.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           u.email.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      final matchesPuskesmas = _selectedPuskesmas == null ||
+      final matchesPuskesmas =
+          _selectedPuskesmas == null ||
           (_selectedPuskesmas == 'admin' && u.isAdmin) ||
-          (_selectedPuskesmas != 'admin' && u.puskesmasId == _selectedPuskesmas);
+          (_selectedPuskesmas != 'admin' &&
+              u.puskesmasId == _selectedPuskesmas);
 
       return matchesSearch && matchesPuskesmas;
     }).toList();
@@ -48,7 +53,8 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
     final dataRows = filteredUsers.map((u) {
       final namaPuskesmas = u.puskesmasId == null
           ? ''
-          : puskesmas.where((p) => p.id == u.puskesmasId).firstOrNull?.nama ?? '-';
+          : puskesmas.where((p) => p.id == u.puskesmasId).firstOrNull?.nama ??
+                '-';
 
       return DataRow(
         cells: [
@@ -57,8 +63,9 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: Icon(
                     u.isAdmin ? Icons.admin_panel_settings : Icons.person,
                     size: 16,
@@ -78,10 +85,8 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
                       Text(
                         u.isAdmin ? 'Analis Kesehatan' : 'Petugas Lab',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -116,9 +121,7 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
                     icon: u.aktif
                         ? const Icon(Icons.block_outlined)
                         : const Icon(Icons.check_circle_outline),
-                    tooltip: u.aktif
-                        ? 'Nonaktifkan Akun'
-                        : 'Aktifkan Akun',
+                    tooltip: u.aktif ? 'Nonaktifkan Akun' : 'Aktifkan Akun',
                     iconSize: 18,
                     onPressed: () => _toggleStatus(context, u),
                   ),
@@ -148,12 +151,14 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
           FilterBar(
             searchHint: 'Cari nama petugas atau email...',
             searchValue: _searchQuery,
+            useDropdown: true,
             onSearchChanged: (query) {
               setState(() => _searchQuery = query);
             },
             filters: [
               FilterItem(
                 label: 'Semua',
+                value: 'all',
                 isSelected: _selectedPuskesmas == null,
                 onSelected: (_) {
                   setState(() => _selectedPuskesmas = null);
@@ -161,6 +166,7 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
               ),
               FilterItem(
                 label: 'Admin',
+                value: 'admin',
                 isSelected: _selectedPuskesmas == 'admin',
                 onSelected: (_) {
                   setState(() => _selectedPuskesmas = 'admin');
@@ -169,6 +175,7 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
               ...puskesmas.map(
                 (p) => FilterItem(
                   label: p.nama,
+                  value: p.id,
                   isSelected: _selectedPuskesmas == p.id,
                   onSelected: (_) {
                     setState(() => _selectedPuskesmas = p.id);
@@ -218,9 +225,7 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Reset Password'),
-        content: Text(
-          'Kirim link reset password ke ${user.email}?',
-        ),
+        content: Text('Kirim link reset password ke ${user.email}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -239,14 +244,16 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
         await FirestoreService.instance.resetPassword(user.email);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Link reset password dikirim ke ${user.email}')),
+            SnackBar(
+              content: Text('Link reset password dikirim ke ${user.email}'),
+            ),
           );
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
         }
       }
     }
@@ -289,9 +296,9 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
         }
       }
     }
@@ -341,8 +348,9 @@ class _FormTambahAkunDialogState extends ConsumerState<_FormTambahAkunDialog> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -370,16 +378,18 @@ class _FormTambahAkunDialogState extends ConsumerState<_FormTambahAkunDialog> {
                 TextFormField(
                   controller: _nama,
                   decoration: const InputDecoration(labelText: 'Nama petugas'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Nama wajib diisi'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'Email tidak valid' : null,
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Email tidak valid'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

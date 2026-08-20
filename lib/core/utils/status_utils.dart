@@ -10,9 +10,29 @@ bool isOverdue({
 }) {
   if (laporan.status == LaporanStatus.submitted) return false;
   final current = now ?? DateTime.now();
-  final batasWaktu =
-      DateTime(laporan.tahun, laporan.bulan + 1, 1).add(Duration(days: batasInputHari));
+  final batasWaktu = DateTime(
+    laporan.tahun,
+    laporan.bulan + 1,
+    1,
+  ).add(Duration(days: batasInputHari));
   return current.isAfter(batasWaktu);
+}
+
+/// Menghitung apakah periode input laporan masih dibuka.
+/// Batas dihitung dari awal bulan berikutnya ditambah batas input.
+bool masihBisaInput({
+  required int tahun,
+  required int bulan,
+  required int batasInputHari,
+  DateTime? now,
+}) {
+  final current = now ?? DateTime.now();
+  final batasWaktu = DateTime(
+    tahun,
+    bulan + 1,
+    1,
+  ).add(Duration(days: batasInputHari));
+  return current.isBefore(batasWaktu);
 }
 
 /// Menghitung apakah laporan masih bisa direvisi/diedit oleh petugas puskesmas.

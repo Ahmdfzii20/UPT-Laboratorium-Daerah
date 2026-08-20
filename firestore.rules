@@ -34,6 +34,13 @@ service cloud.firestore {
         && request.resource.data.bulan == resource.data.bulan;
     }
 
+    function masihDalamBatasInput(laporan) {
+      return request.time < timestamp.date(
+          laporan.tahun,
+          laporan.bulan + 1,
+          1) + duration.value(deadlineSettings().batasInputHari, 'd');
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow create: if isAdmin();
@@ -58,9 +65,11 @@ service cloud.firestore {
 
     match /laporan/{laporanId} {
       allow read: if isAdmin() || isPuskesmasOwner(resource.data.puskesmasId);
-      allow create: if isPuskesmasOwner(request.resource.data.puskesmasId);
+      allow create: if isPuskesmasOwner(request.resource.data.puskesmasId)
+        && masihDalamBatasInput(request.resource.data);
       allow update: if isAdmin()
         || (isPuskesmasOwner(resource.data.puskesmasId)
+            && masihDalamBatasInput(resource.data)
             && masihBisaDirevisi(resource.data)
             && fieldIdentitasTidakBerubah());
       allow delete: if isAdmin();
