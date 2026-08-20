@@ -236,7 +236,7 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
 
     if (confirmed == true && context.mounted) {
       try {
-        // TODO: Implement password reset logic
+        await FirestoreService.instance.resetPassword(user.email);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Link reset password dikirim ke ${user.email}')),
