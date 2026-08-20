@@ -20,7 +20,6 @@ class _PengaturanDeadlineScreenState
     extends ConsumerState<PengaturanDeadlineScreen> {
   late final TextEditingController _batasInput;
   late final TextEditingController _batasRevisi;
-  String _satuan = 'kalender';
   bool _saving = false;
 
   @override
@@ -36,7 +35,6 @@ class _PengaturanDeadlineScreenState
     if (d != null) {
       _batasInput.text = d.batasInputHari.toString();
       _batasRevisi.text = d.batasRevisiHari.toString();
-      _satuan = d.satuanBatasInput;
     }
   }
 
@@ -64,7 +62,7 @@ class _PengaturanDeadlineScreenState
       await FirestoreService.instance.simpanDeadline(
         DeadlineModel(
           batasInputHari: input,
-          satuanBatasInput: _satuan,
+          satuanBatasInput: 'kalender',
           batasRevisiHari: revisi,
         ),
         admin.uid,
@@ -76,8 +74,9 @@ class _PengaturanDeadlineScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -91,123 +90,99 @@ class _PengaturanDeadlineScreenState
         final d = next.value!;
         _batasInput.text = d.batasInputHari.toString();
         _batasRevisi.text = d.batasRevisiHari.toString();
-        _satuan = d.satuanBatasInput;
       }
     });
 
     return DashboardShell(
       title: 'Pengaturan Batas Waktu',
-      child: Column(
-        children: [
-          // Header Section
-          ScreenHeader(
-            title: 'Pengaturan Sistem',
-            description: 'Atur batas waktu input dan revisi laporan untuk semua puskesmas',
-          ),
-          
-          // Settings Content
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: AdminCard(
-                    padding: const EdgeInsets.all(24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 700;
+          return Column(
+            children: [
+              const ScreenHeader(
+                title: 'Pengaturan Sistem',
+                description:
+                    'Atur batas input dan revisi laporan untuk semua puskesmas.',
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    isNarrow ? 16 : 24,
+                    12,
+                    isNarrow ? 16 : 24,
+                    32,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 960),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          'Batas Input Laporan (X)',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Jumlah hari sejak awal bulan berikutnya untuk laporan bulan N diinput/disubmit.',
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _batasInput,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Batas input (hari)',
-                            suffixText: 'hari',
-                            helperText: 'Contoh: 15 hari setelah awal bulan berikutnya',
+                        _buildCalendarNotice(context),
+                        const SizedBox(height: 16),
+                        if (isNarrow) ...[
+                          _DeadlineCard(
+                            icon: Icons.edit_calendar_outlined,
+                            title: 'Batas input laporan',
+                            description:
+                                'Waktu yang tersedia sejak awal bulan berikutnya untuk mengisi dan mengirim laporan.',
+                            controller: _batasInput,
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Batas Revisi Setelah Submit (Y)',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Jumlah hari sejak laporan disubmit, selama itu petugas bebas mengedit.',
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _batasRevisi,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Batas revisi (hari)',
-                            suffixText: 'hari',
-                            helperText: 'Contoh: 3 hari untuk revisi setelah submit',
+                          const SizedBox(height: 16),
+                          _DeadlineCard(
+                            icon: Icons.history_edu_outlined,
+                            title: 'Batas revisi laporan',
+                            description:
+                                'Waktu yang tersedia setelah laporan dikirim untuk melakukan perubahan.',
+                            controller: _batasRevisi,
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        DropdownButtonFormField<String>(
-                          initialValue: _satuan,
-                          decoration: const InputDecoration(
-                            labelText: 'Satuan Waktu',
-                            helperText: 'Pilih jenis penghitungan hari',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'kalender',
-                              child: Text('Hari kalender'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'kerja',
-                              child: Text('Hari kerja'),
-                            ),
-                          ],
-                          onChanged: (v) => setState(() => _satuan = v ?? 'kalender'),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: const Row(
+                        ] else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                              SizedBox(width: 8),
                               Expanded(
-                                child: Text(
-                                  'MVP hanya menghitung hari kalender. Opsi "hari kerja" disimpan untuk pengembangan lanjutan.',
-                                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                                child: _DeadlineCard(
+                                  icon: Icons.edit_calendar_outlined,
+                                  title: 'Batas input laporan',
+                                  description:
+                                      'Waktu yang tersedia sejak awal bulan berikutnya untuk mengisi dan mengirim laporan.',
+                                  controller: _batasInput,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _DeadlineCard(
+                                  icon: Icons.history_edu_outlined,
+                                  title: 'Batas revisi laporan',
+                                  description:
+                                      'Waktu yang tersedia setelah laporan dikirim untuk melakukan perubahan.',
+                                  controller: _batasRevisi,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        FilledButton.tonalIcon(
-                          onPressed: _saving ? null : _simpan,
-                          icon: _saving
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.save_outlined),
-                          label: Text(
-                            _saving ? 'Menyimpan...' : 'Simpan Pengaturan',
+                        const SizedBox(height: 20),
+                        Align(
+                          alignment: isNarrow
+                              ? Alignment.center
+                              : Alignment.centerRight,
+                          child: SizedBox(
+                            width: isNarrow ? double.infinity : 220,
+                            child: FilledButton.icon(
+                              onPressed: _saving ? null : _simpan,
+                              icon: _saving
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save_outlined),
+                              label: Text(
+                                _saving ? 'Menyimpan...' : 'Simpan pengaturan',
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -215,6 +190,93 @@ class _PengaturanDeadlineScreenState
                   ),
                 ),
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCalendarNotice(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.calendar_month_outlined, color: colors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                text: 'Semua batas waktu dihitung dalam ',
+                children: [
+                  TextSpan(
+                    text: 'hari kalender',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: colors.primary,
+                    ),
+                  ),
+                  const TextSpan(
+                    text:
+                        '. Sabtu, Minggu, dan hari libur tetap ikut dihitung.',
+                  ),
+                ],
+              ),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeadlineCard extends StatelessWidget {
+  const _DeadlineCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.controller,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AdminCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: colors.secondaryContainer,
+            foregroundColor: colors.primary,
+            child: Icon(icon),
+          ),
+          const SizedBox(height: 16),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(description, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 20),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Jumlah hari kalender',
+              suffixText: 'hari',
+              helperText: 'Masukkan angka 0 atau lebih',
             ),
           ),
         ],

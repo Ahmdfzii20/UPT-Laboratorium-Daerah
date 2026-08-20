@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DeadlineModel {
   final int batasInputHari;
-  final String satuanBatasInput; // 'kalender' | 'kerja'
+
+  /// Dipertahankan untuk kompatibilitas data Firestore lama.
+  final String satuanBatasInput;
   final int batasRevisiHari;
   final String? diubahOleh;
   final DateTime? diubahPada;
@@ -18,7 +20,7 @@ class DeadlineModel {
   factory DeadlineModel.fromFirestore(Map<String, dynamic> data) {
     return DeadlineModel(
       batasInputHari: (data['batasInputHari'] as num?)?.toInt() ?? 10,
-      satuanBatasInput: data['satuanBatasInput'] as String? ?? 'kalender',
+      satuanBatasInput: 'kalender',
       batasRevisiHari: (data['batasRevisiHari'] as num?)?.toInt() ?? 10,
       diubahOleh: data['diubahOleh'] as String?,
       diubahPada: (data['diubahPada'] as Timestamp?)?.toDate(),
@@ -28,12 +30,10 @@ class DeadlineModel {
   Map<String, dynamic> toFirestore() {
     return {
       'batasInputHari': batasInputHari,
-      'satuanBatasInput': satuanBatasInput,
+      'satuanBatasInput': 'kalender',
       'batasRevisiHari': batasRevisiHari,
       'diubahOleh': diubahOleh,
-      'diubahPada': diubahPada == null
-          ? null
-          : Timestamp.fromDate(diubahPada!),
+      'diubahPada': diubahPada == null ? null : Timestamp.fromDate(diubahPada!),
     };
   }
 
@@ -46,7 +46,7 @@ class DeadlineModel {
   }) {
     return DeadlineModel(
       batasInputHari: batasInputHari ?? this.batasInputHari,
-      satuanBatasInput: satuanBatasInput ?? this.satuanBatasInput,
+      satuanBatasInput: 'kalender',
       batasRevisiHari: batasRevisiHari ?? this.batasRevisiHari,
       diubahOleh: diubahOleh ?? this.diubahOleh,
       diubahPada: diubahPada ?? this.diubahPada,

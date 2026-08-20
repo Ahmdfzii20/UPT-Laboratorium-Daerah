@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppLogo extends StatelessWidget {
-  const AppLogo({
-    super.key,
-    this.size = 80.0,
-    this.padding = 0.0,
-  });
+  const AppLogo({super.key, this.size = 80.0, this.padding = 0.0});
 
   final double size;
   final double padding;
@@ -25,7 +21,7 @@ class AppLogo extends StatelessWidget {
             color: Color(0x0F000000),
             blurRadius: 8,
             offset: Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: ClipOval(
@@ -63,10 +59,7 @@ class AppHeaderTitle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (showLogo) ...[
-          const AppLogo(size: 32),
-          const SizedBox(width: 12),
-        ],
+        if (showLogo) ...[const AppLogo(size: 40), const SizedBox(width: 12)],
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
