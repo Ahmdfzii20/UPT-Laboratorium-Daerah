@@ -575,6 +575,14 @@ class _ExamItemCard extends StatelessWidget {
                         child: TextFormField(
                           controller: controller,
                           enabled: enabled,
+                          onTap: () {
+                            if (controller.text == '0') {
+                              controller.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: controller.text.length,
+                              );
+                            }
+                          },
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.right,
                           style: Theme.of(context).textTheme.bodyMedium
