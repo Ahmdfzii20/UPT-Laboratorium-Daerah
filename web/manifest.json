@@ -1,6 +1,6 @@
 {
-    "name": "labkesda_app",
-    "short_name": "labkesda_app",
+    "name": "SIPELAB",
+    "short_name": "SIPELAB",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/auth_provider.dart';
@@ -8,6 +9,18 @@ class UnauthorizedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(authStateProvider).value;
+    final currentUser = ref.watch(currentUserProvider).value;
+    final message = !kIsWeb && currentUser?.isAdmin == true
+      ? 'Akun Admin hanya dapat digunakan melalui versi Web.'
+      : authUser == null
+        ? 'Sesi login tidak ditemukan. Silakan login kembali.'
+        : currentUser == null
+          ? 'Data akun Anda belum terdaftar di sistem. Hubungi Admin Labkesda.'
+          : !currentUser.aktif
+            ? 'Akun Anda sedang dinonaktifkan. Hubungi Admin Labkesda.'
+            : 'Anda tidak memiliki izin untuk mengakses halaman ini.';
+
     return Scaffold(
       body: Center(
         child: Padding(
@@ -22,8 +35,8 @@ class UnauthorizedScreen extends ConsumerWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Akun tidak dikenali, dinonaktifkan, atau Anda (Admin) tidak diizinkan masuk melalui perangkat mobile. Harap gunakan versi Web.',
+              Text(
+                message,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
