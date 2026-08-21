@@ -268,7 +268,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Footer Copyright
                   Text(
-                    '© 2026 Labroatorium Kesehatan Daerah. All rights reserved.',
+                    '© 2026 Laboratorium Kesehatan Daerah. All rights reserved.',
                     textAlign: TextAlign.center,
                     style: textTheme.labelMedium?.copyWith(
                       color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
