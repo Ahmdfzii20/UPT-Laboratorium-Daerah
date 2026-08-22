@@ -298,6 +298,7 @@ firebase deploy --only firestore:rules
    node seed-data.js
    ```
 5. Verifikasi: login dengan akun admin ini di app nanti — pastikan aplikasi membaca `/users/{uid}` dan mendapat `role: "admin"`.
+  Login di Firebase Authentication saja belum cukup. UID dokumen Firestore harus sama persis dengan UID pengguna di Authentication.
 
 **Catatan:** `firebase-admin` (dipakai di script ini) berjalan **lokal di komputer Anda**, bukan Cloud Functions — jadi tetap gratis, hanya dipakai 1-2 kali saja untuk seed data awal.
 

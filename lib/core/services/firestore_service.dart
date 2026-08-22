@@ -237,13 +237,19 @@ class FirestoreService {
         email: email,
         password: password,
       );
-      await usersRef.doc(cred.user!.uid).set({
-        'email': email,
-        'role': 'puskesmas',
-        'puskesmasId': puskesmasId,
-        'nama': nama,
-        'aktif': true,
-      });
+      try {
+        await usersRef.doc(cred.user!.uid).set({
+          'email': email,
+          'role': 'puskesmas',
+          'puskesmasId': puskesmasId,
+          'nama': nama,
+          'aktif': true,
+        });
+      } catch (_) {
+        // Jangan meninggalkan akun Auth tanpa profil Firestore.
+        await cred.user?.delete();
+        rethrow;
+      }
       await secondaryAuth.signOut();
       return cred;
     } finally {

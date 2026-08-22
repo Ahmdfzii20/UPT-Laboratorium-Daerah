@@ -9,10 +9,14 @@ class UnauthorizedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authUser = ref.watch(authStateProvider).value;
-    final currentUser = ref.watch(currentUserProvider).value;
+    final authState = ref.watch(authStateProvider);
+    final currentUserState = ref.watch(currentUserProvider);
+    final authUser = authState.value;
+    final currentUser = currentUserState.value;
     final message = !kIsWeb && currentUser?.isAdmin == true
       ? 'Akun Admin hanya dapat digunakan melalui versi Web.'
+      : currentUserState.hasError
+        ? 'Data akun gagal dibaca. Periksa koneksi dan pastikan Firestore Rules sudah di-deploy.'
       : authUser == null
         ? 'Sesi login tidak ditemukan. Silakan login kembali.'
         : currentUser == null
