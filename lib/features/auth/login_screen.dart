@@ -19,6 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
+  String? _loginError;
 
   @override
   void dispose() {
@@ -45,21 +46,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _ => 'Gagal masuk: ${e.message ?? e.code}',
       };
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(pesan),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        _emailController.clear();
+        _passwordController.clear();
+        setState(() => _loginError = pesan);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        _emailController.clear();
+        _passwordController.clear();
+        setState(() => _loginError = 'Terjadi kesalahan. Silakan coba lagi.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -127,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Sistem Pelaporan Laboratorium\nKesehatan Daerah\nDeli Serdang',
+            'Sistem Pelaporan Laboratorium\nKesehatan Masyarakat Tingkat II \nDeli Serdang',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: AppTheme.onSurface,
                   fontWeight: FontWeight.w600,
@@ -241,10 +236,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Email institusi',
-                prefixIcon: Icon(Icons.mail_outline),
+                prefixIcon: const Icon(Icons.mail_outline),
+                errorText: _loginError,
               ),
+              onChanged: (_) {
+                if (_loginError != null) setState(() => _loginError = null);
+              },
               validator: (v) => (v == null || !v.contains('@'))
                   ? 'Email tidak valid'
                   : null,
@@ -264,7 +263,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
+                errorText: _loginError,
               ),
+              onChanged: (_) {
+                if (_loginError != null) setState(() => _loginError = null);
+              },
               validator: (v) => (v == null || v.isEmpty)
                   ? 'Password wajib diisi'
                   : null,
@@ -308,7 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 28),
             Text(
-              '© 2026 Laboratorium Kesehatan Daerah',
+              '© 2026 Laboratorium Kesehatan Masyarakat Tingkat II Deli Serdang',
               textAlign: TextAlign.center,
               style: textTheme.labelMedium?.copyWith(color: Colors.white70),
             ),

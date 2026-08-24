@@ -48,7 +48,7 @@ class _LabkesdaDashboardScreenState
         padding: const EdgeInsets.all(16),
         children: [
           GradientHeader(
-            judul: 'Dashboard Admin Labkesda',
+            judul: 'Dashboard Admin Labkesmas',
             subjudul: 'Deli Serdang • $_tahun',
             child: Row(
               children: [

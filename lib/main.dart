@@ -28,7 +28,7 @@ class LabkesdaApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
-      title: 'Labkesda Deli Serdang',
+      title: 'Labkesmas Deli Serdang',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,
