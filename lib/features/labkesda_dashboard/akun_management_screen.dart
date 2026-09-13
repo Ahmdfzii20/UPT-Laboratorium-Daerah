@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/firestore_service.dart';
+import '../../../models/user_model.dart';
 import '../../../providers/master_data_providers.dart';
 import '../shared/widgets/admin_data_table.dart';
 import '../shared/widgets/admin_portal_components.dart';
@@ -111,6 +112,12 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
               spacing: 4,
               children: [
                 IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit Akun',
+                  iconSize: 18,
+                  onPressed: () => _editAkun(context, u),
+                ),
+                IconButton(
                   icon: const Icon(Icons.vpn_key_outlined),
                   tooltip: 'Reset Password',
                   iconSize: 18,
@@ -216,6 +223,18 @@ class _AkunManagementScreenState extends ConsumerState<AkunManagementScreen> {
     if (result == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Akun petugas berhasil dibuat.')),
+      );
+    }
+  }
+
+  Future<void> _editAkun(BuildContext context, UserModel user) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => _FormEditAkunDialog(user: user),
+    );
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Akun berhasil diperbarui.')),
       );
     }
   }
@@ -431,6 +450,143 @@ class _FormTambahAkunDialogState extends ConsumerState<_FormTambahAkunDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Buat Akun'),
+        ),
+      ],
+    );
+  }
+}
+
+class _FormEditAkunDialog extends ConsumerStatefulWidget {
+  final UserModel user;
+
+  const _FormEditAkunDialog({required this.user});
+
+  @override
+  ConsumerState<_FormEditAkunDialog> createState() =>
+      _FormEditAkunDialogState();
+}
+
+class _FormEditAkunDialogState extends ConsumerState<_FormEditAkunDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nama;
+  String? _puskesmasId;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nama = TextEditingController(text: widget.user.nama);
+    _puskesmasId = widget.user.puskesmasId;
+  }
+
+  @override
+  void dispose() {
+    _nama.dispose();
+    super.dispose();
+  }
+
+  Future<void> _simpan() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (widget.user.isPuskesmas && _puskesmasId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih puskesmas terlebih dahulu.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await FirestoreService.instance.simpanUser(
+        UserModel(
+          uid: widget.user.uid,
+          email: widget.user.email,
+          role: widget.user.role,
+          puskesmasId: widget.user.isPuskesmas ? _puskesmasId : null,
+          nama: _nama.text.trim(),
+          aktif: widget.user.aktif,
+        ),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final puskesmas = ref.watch(puskesmasListProvider).value ?? [];
+    final aktif = puskesmas.where((p) => p.aktif).toList();
+    final currentPuskesmas = puskesmas
+        .where((p) => p.id == _puskesmasId)
+        .firstOrNull;
+    final dropdownItems = [
+      ...aktif,
+      if (currentPuskesmas != null && !aktif.contains(currentPuskesmas))
+        currentPuskesmas,
+    ];
+
+    return AlertDialog(
+      title: const Text('Edit Akun'),
+      content: SizedBox(
+        width: 440,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nama,
+                  decoration: const InputDecoration(labelText: 'Nama petugas'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Nama wajib diisi'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: widget.user.email,
+                  readOnly: true,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                ),
+                if (widget.user.isPuskesmas) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _puskesmasId,
+                    decoration: const InputDecoration(
+                      labelText: 'Instansi / Puskesmas',
+                    ),
+                    items: [
+                      for (final p in dropdownItems)
+                        DropdownMenuItem(value: p.id, child: Text(p.nama)),
+                    ],
+                    onChanged: (v) => setState(() => _puskesmasId = v),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _simpan,
+          child: _saving
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Simpan'),
         ),
       ],
     );

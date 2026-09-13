@@ -30,6 +30,12 @@ const _adminDests = <_Dest>[
     Icons.grid_view,
   ),
   _Dest(
+    '/labkesda/input',
+    'Input Laporan',
+    Icons.edit_note_outlined,
+    Icons.edit_note,
+  ),
+  _Dest(
     '/labkesda/rekap',
     'Rekap & Export',
     Icons.table_chart_outlined,

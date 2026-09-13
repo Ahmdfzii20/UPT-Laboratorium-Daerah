@@ -8,6 +8,7 @@ import '../features/auth/login_screen.dart';
 import '../features/labkesda_dashboard/akun_management_screen.dart';
 import '../features/labkesda_dashboard/audit_trail_screen.dart';
 import '../features/labkesda_dashboard/dashboard_screen.dart';
+import '../features/labkesda_dashboard/input_laporan_screen.dart';
 import '../features/labkesda_dashboard/master_data_screen.dart';
 import '../features/labkesda_dashboard/monitoring_status_screen.dart';
 import '../features/labkesda_dashboard/pengaturan_deadline_screen.dart';
@@ -95,6 +96,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/labkesda/dashboard',
         builder: (context, state) => const LabkesdaDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/labkesda/input',
+        builder: (context, state) => const InputLaporanScreen(),
+      ),
+      GoRoute(
+        path: '/labkesda/form',
+        builder: (context, state) => const FormLaporanScreen(),
       ),
       GoRoute(
         path: '/labkesda/rekap',

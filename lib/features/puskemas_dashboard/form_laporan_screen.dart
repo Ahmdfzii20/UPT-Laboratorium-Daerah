@@ -43,6 +43,14 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     return int.tryParse(b ?? '') ?? DateTime.now().month;
   }
 
+  bool get _isAdmin => ref.read(currentUserProvider).value?.isAdmin ?? false;
+
+  String? get _targetPuskesmasId {
+    final selected = GoRouterState.of(context).uri.queryParameters['puskesmasId'];
+    if (_isAdmin && selected != null && selected.isNotEmpty) return selected;
+    return ref.read(currentUserProvider).value?.puskesmasId;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -50,9 +58,11 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
   }
 
   Future<void> _mulaiLoadData() async {
-    final user = ref.read(currentUserProvider).value;
-    final puskesmasId = user?.puskesmasId;
-    if (puskesmasId == null) return;
+    final puskesmasId = _targetPuskesmasId;
+    if (puskesmasId == null) {
+      if (mounted) setState(() => _loadingData = false);
+      return;
+    }
     final examTypes = ref.read(examTypesProvider).value ?? [];
     if (examTypes.isEmpty) return;
 
@@ -87,6 +97,8 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
   }
 
   bool _isEditable(DeadlineModel deadline) {
+    if (_isAdmin) return true;
+
     final masihDalamBatasInput = masihBisaInput(
       tahun: _tahun,
       bulan: _bulan,
@@ -126,7 +138,7 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     if (user == null) return;
     final deadline = ref.read(deadlineProvider).value ?? const DeadlineModel();
 
-    if (!masihBisaInput(
+    if (!_isAdmin && !masihBisaInput(
       tahun: _tahun,
       bulan: _bulan,
       batasInputHari: deadline.batasInputHari,
@@ -144,8 +156,10 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
       final hasil = _collectHasil(examTypes);
       final now = DateTime.now();
       final existing = _laporan;
+      final puskesmasId = _targetPuskesmasId;
+      if (puskesmasId == null) return;
       final laporanId = FirestoreService.instance.generateLaporanId(
-        user.puskesmasId!,
+        puskesmasId,
         _tahun,
         _bulan,
       );
@@ -153,7 +167,7 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
       if (existing == null) {
         final laporan = LaporanModel(
           id: laporanId,
-          puskesmasId: user.puskesmasId!,
+          puskesmasId: puskesmasId,
           tahun: _tahun,
           bulan: _bulan,
           status: submit ? LaporanStatus.submitted : LaporanStatus.draft,
@@ -242,7 +256,7 @@ class _FormLaporanScreenState extends ConsumerState<FormLaporanScreen> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/puskesmas/dashboard');
+      context.go(_isAdmin ? '/labkesda/input' : '/puskesmas/dashboard');
     }
   }
 
